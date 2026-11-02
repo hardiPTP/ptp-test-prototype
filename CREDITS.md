@@ -61,3 +61,7 @@ Removed, because they did not fit their post:
 Added: `mic`, `stage2`, `crowd`, `icedcoffee`, `chai`, a new `drain` (open manhole) and a new `pothole3` (car in a city pothole). `flea` is now cropped to the stalls, leaving out the person at the right edge. Posts and places that had no fitting photo now show a plain tinted block. Real businesses have no photo unless it shows that landmark (the churches, the fort, the promenade, the park).
 
 No photo shows an identifiable public figure, and no private person's face is in focus.
+
+## Round 3 photo changes
+
+None. No photos were added, removed or recropped in round 3. The one new sample place, Union Park Juice Bar, has no photo. Map data and place search come from © OpenStreetMap contributors through OpenFreeMap tiles and Nominatim.
