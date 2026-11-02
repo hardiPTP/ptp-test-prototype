@@ -27,18 +27,7 @@ Map: OpenFreeMap (positron style) © OpenMapTiles, data © OpenStreetMap contrib
 | churchsa | St Andrew's Church, Bandra | Anuradha Sengupta | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:St_Andrew's_Church,_Bandra.jpg |
 | fort | Castella de Aguada 11 | Nicholas (Nichalp) | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Castella_de_Aguada_11.jpg |
 | fort2 | Castella de Aguada 2 | Nicholas (Nichalp) | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Castella_de_Aguada_2.jpg |
-| flea | 'Candle Stalls' on the road to 'Mount Mary Church' in Bandra. | Rudolph.A.furtado | Public domain | https://commons.wikimedia.org/wiki/File:'Candle_Stalls'_on_the_road_to_'Mount_Mary_Church'_in_Bandra..JPG |
-| food | Food fest and students | Akashdoley13 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Food_fest_and_students.jpg |
-| bread | Freshly baked bread loaves | Flickr.com user "FotoDawg" | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Freshly_baked_bread_loaves.jpg |
-| sizzler | Chicken Sizzeler | Faismeen | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Chicken_Sizzeler.jpg |
-| bar | Cocktails mit Schirmchen | Alpha du centaure | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Cocktails_mit_Schirmchen.jpg |
-| lucky | Dum Biryani Plate | Umesh Tongbra | GFDL | https://commons.wikimedia.org/wiki/File:Dum_Biryani_Plate.jpg |
 | cat | Gray Tabby Cat | Nfwray | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Gray_Tabby_Cat.jpg |
-| mic | A microphone | Taoheedah | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:A_microphone.jpg |
-| stage2 | Silhouettes against pale stage smoke (Unsplash) | Daniel Ebersole danielebersole | CC0 | https://commons.wikimedia.org/wiki/File:Silhouettes_against_pale_stage_smoke_(Unsplash).jpg |
-| crowd | At the back of a concert venue (Unsplash) | Rob Bye robertbye | CC0 | https://commons.wikimedia.org/wiki/File:At_the_back_of_a_concert_venue_(Unsplash).jpg |
-| icedcoffee | Ice coffee image | Not stated on the file page | GFDL | https://commons.wikimedia.org/wiki/File:Ice_coffee_image.jpg |
-| chai | Bun-Maska | Anoopb15 | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Bun-Maska.jpg |
 
 Licence notes: CC BY, CC BY-SA and GFDL files need the author and licence shown. The About screen does this under Credits, which lists every file above with its author, licence and a link to its page. Public domain and CC0 files need no credit but are listed too.
 
@@ -65,3 +54,11 @@ No photo shows an identifiable public figure, and no private person's face is in
 ## Round 3 photo changes
 
 None. No photos were added, removed or recropped in round 3. The one new sample place, Union Park Juice Bar, has no photo. Map data and place search come from © OpenStreetMap contributors through OpenFreeMap tiles and Nominatim.
+
+## Round 10 photo changes
+
+Removed with the sample events, deals and invented places they illustrated: `flea`, `food`, `bread`, `sizzler`, `bar`, `lucky`, `mic`, `stage2`, `crowd`, `icedcoffee` and `chai`. Their rows are gone from the table above, and from the About screen's credits.
+
+The real events, openings and news (round 10) have no photos, because none of their sources gave one (`image_url` is empty for all 24 used records). They show the kind's tint block. Their text, dates and links come from the sources named on each item ("Source: ..."), listed in `/home/claude/realdata/items.json`.
+
+21 photos remain, all from Wikimedia Commons as listed above.
