@@ -788,6 +788,29 @@ input::placeholder{transition:color .22s}
 .mendtx{display:flex;flex-direction:column;gap:4px;padding:4px 4px 0}
 .mendtx .mdist{margin:0}
 
+/* Round 5: list photos as 52 px squares with a 12 px corner, the list-view switch, the ward line */
+.card.thumbed .c-head{display:flex;gap:12px;align-items:flex-start}
+.card.thumbed .c-hx{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.mph.r-thumb{align-self:center}
+.row.nested .mph.r-thumb{margin-left:0}
+.srow.srow-t{flex-direction:row;align-items:center;gap:12px}
+.srow-t .stx2{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.drow .mph.d-thumb{align-self:center}
+
+/* Masthead switch in list view: white, 1.5 px orange stroke, orange map icon (map view stays white with an ink stroke) */
+.vswitch.on{background:var(--paper);color:var(--orange);box-shadow:var(--raise-s),inset 0 0 0 1.5px var(--orange)}
+
+/* "Ward updates are tracked in Bandra West only, for now": one quiet 12 px line with an info icon */
+.wardline{display:flex;align-items:center;gap:6px;font:300 12px/16px var(--text);color:var(--ink60)}
+.wardline .ic{flex:none}
+.lwardline{margin:-4px 20px 12px}
+.pwardline{margin:-4px 2px 0}
+.dwardline{margin:2px 0 -4px}
+#mapui .mapwardline{position:absolute;left:16px;right:76px;background:var(--paper);border-radius:14px;box-shadow:var(--raise-s);padding:0 4px 0 12px;min-height:44px;z-index:2}
+#mapui .mapwardline .grow{flex:1}
+#mapui .mapwardline .wlx{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink60);flex:none}
+#app.snackon #mapui .mapwardline{transform:translateY(var(--snack-h,70px))}
+
 </style>
 </head>
 <body>
@@ -1160,6 +1183,10 @@ const HINTS_SEARCH = ['Try \u201cpothole Chapel Road\u201d', 'Try \u201cchai\u20
 const HINTS_LOCATION = ['Try \u201cChapel Road\u201d', 'Try \u201cPali Hill\u201d', 'Try \u201cCarter Road\u201d', 'Try \u201cKhar Danda\u201d'];
 const HINTS_PLACE = ['Try \u201cBora Bora\u201d', 'Try \u201cCorona Garden\u201d', 'Try \u201cchai\u201d', 'Try \u201cKhar Comedy Club\u201d'];
 
+/* Round 5: Fix acknowledgment is tracked in Bandra West only, said wherever Fix appears */
+const WARD_ONLY = 'Ward updates are tracked in Bandra West only, for now.';
+function wardLine(cls) { return '<p class="wardline ' + (cls || '') + '">' + icon('info', 14) + '<span>' + WARD_ONLY + '</span></p>'; }
+
 /* Image helpers: photos are keys into IMG (inlined WebP) or data URLs of the person's own uploads */
 function imgSrc(k) { if (!k) return ''; if (k.startsWith('data:')) return k; return (window.IMG && IMG[k]) || ''; }
 function bg(k) { const s = imgSrc(k); return s ? "background-image:url('" + s + "')" : ''; }
@@ -1263,68 +1290,72 @@ const PLACES = [
 // No text names a weekday or a fixed date: dates on screen are computed from today.
 const ITEMS = [
   // Problems (Fix)
-  { id: 'p-chuim-waste', kind: 'problem', cat: 'Waste', text: 'Garbage not picked up near Chuim Village for three days now\nBins full and the bags are torn open now. Crows and dogs all over it. Smell reaches the first floor.', road: 'Chuim Village Rd, by the bus stop', lat: 19.07357, lng: 72.82598, at: T('-2 08:40'), photos: ['garbage'], ward: { state: 'none' }, verified: 0, hearts: 14, comments: [['-2 11:05', 'Same at the other end near the well. Nobody came for two days.'], ['-1 09:30', 'Called the ward helpline, they gave a complaint number.']] },
-  { id: 'p-chapel-pothole', kind: 'problem', cat: 'Pothole', text: 'Pothole on Chapel Road at the Veronica Road corner\nAutos swerve round it into people walking. Filled with rubble once and it washed out.', road: 'Chapel Rd, Veronica Rd corner', lat: 19.05322, lng: 72.82838, at: T('-1 08:15'), photos: [], ward: { state: 'none' }, verified: 0, hearts: 6, comments: [] },
-  { id: 'p-elco-pothole', kind: 'problem', cat: 'Pothole', text: 'Huge pothole outside Elco Market, two bikes slipped today\nRight at the bus stop side. Full of water after they washed the road, you cannot see how deep it is.', road: 'Hill Rd, outside Elco Market', lat: 19.05571, lng: 72.83206, at: T('0 07:10'), photos: ['pothole'], ward: { state: 'none' }, verified: 0, hearts: 22, comments: [['0 07:40', 'Saw the second one. Delivery boy, he was ok but the bike was not.']] },
-  { id: 'p-16th-light', kind: 'problem', cat: 'Light', text: 'Streetlight off on 16th Road, full dark after 8\nTwo poles in a row are off. Women walking back from the station are using phone torches.', road: '16th Rd, near the Khar Gymkhana lane', lat: 19.07702, lng: 72.83092, at: T('-1 21:05'), photos: ['light'], ward: { state: 'ack', at: T('0 06:15') }, verified: 0, hearts: 9, comments: [] },
-  { id: 'p-hillrd-hawkers', kind: 'problem', cat: 'Footpath', text: 'Hawkers back on the Hill Road footpath outside St Peter\'s\nWhole footpath taken again, people walking on the road with kids. The ward said notices would go out.', road: "Hill Rd, near St Peter's Church", lat: 19.05522, lng: 72.83087, at: T('-6 07:40'), photos: [], ward: { state: 'ack', at: T('-5 11:00') }, verified: 0, hearts: 31, comments: [['-5 12:10', 'They pack up when the van comes and are back in an hour.'], ['-3 18:20', 'Worse after mass, the whole stretch is blocked.']] },
-  { id: 'p-palinaka-water', kind: 'problem', cat: 'Water', text: 'Pipe burst at Pali Naka, water on the road since morning\nClean water just running into the gutter. Building tanks on this side are not filling.', road: 'Pali Mala Rd, Pali Naka', lat: 19.06283, lng: 72.82926, at: T('0 06:15'), photos: ['flood'], ward: { state: 'progress', at: T('0 07:30') }, verified: 0, hearts: 18, comments: [['0 07:45', 'BMC van is here now, they have dug one side.']] },
-  { id: 'p-nargis-tree', kind: 'problem', cat: 'Other', text: 'Gulmohar fell across Nargis Dutt Road, one lane blocked\nBig branch came down in the night wind, took a cable with it. Cars going one at a time.', road: 'Nargis Dutt Rd, Pali Hill', lat: 19.06702, lng: 72.82868, at: T('-1 06:30'), photos: ['tree'], ward: { state: 'fixed', at: T('-1 16:10') }, verified: 6, hearts: 12, comments: [['-1 17:00', 'Cleared by evening, the wood is still on the side though.'], ['-1 20:00', 'Road is open. Checked on the way back.']] },
-  { id: 'p-waroda-drain', kind: 'problem', cat: 'Other', text: 'Drain cover missing on Waroda Road, school kids walk past here\nSomeone put a crate over it. Still not safe at night, there is no light on this stretch.', road: 'Waroda Rd, near Holy Family', lat: 19.05409, lng: 72.82735, at: T('-4 08:05'), photos: ['drain'], ward: { state: 'fixed', at: T('-2 15:20') }, verified: 3, hearts: 20, comments: [['-2 16:00', 'New cover is on. Checked it holds.']] },
-  { id: 'p-bazar-waste', kind: 'problem', cat: 'Waste', text: 'Bazar Road bins overflowing again, fish market waste on the road\nPickup came at 6 and the bins were full again by 10. Water from the fish crates runs down to Hill Rd.', road: 'Bazar Rd, near the market gate', lat: 19.05399, lng: 72.83162, at: T('-1 10:20'), photos: ['garbage2'], ward: { state: 'none' }, verified: 0, hearts: 7, comments: [] },
-  { id: 'p-carter-paver', kind: 'problem', cat: 'Footpath', text: 'Broken paver blocks on Carter Road promenade near Otters Club, my mother tripped\nThree or four blocks lifted near the second bench. Hard to see on the early morning walk.', road: 'Carter Rd promenade, near Otters Club', lat: 19.06071, lng: 72.82177, at: T('-6 06:50'), photos: ['footpath'], ward: { state: 'ack', at: T('-4 12:00') }, verified: 0, hearts: 16, comments: [['-5 07:10', 'Marked it with a stone for now.']] },
-  { id: 'p-chapel-cable', kind: 'problem', cat: 'Light', text: 'Cable hanging low on Chapel Road, touching heads near the mural\nBlack cable came loose from the pole. Tall people have to duck. Do not know if it is live.', road: 'Chapel Rd, by the mural wall', lat: 19.05317, lng: 72.82883, at: T('0 06:00'), photos: ['cables'], ward: { state: 'none' }, verified: 0, hearts: 5, comments: [] },
-  { id: 'p-perry-debris', kind: 'problem', cat: 'Waste', text: 'Construction debris dumped on Perry Road, half the road gone\nTruck dropped rubble at night outside the building being redone. Cars and the BEST bus squeezing past.', road: "Perry Rd, near D'Monte Park", lat: 19.05955, lng: 72.82631, at: T('-3 09:15'), photos: [], ward: { state: 'ack', at: T('-2 10:00') }, verified: 0, hearts: 11, comments: [] },
-  { id: 'p-stpaul-light', kind: 'problem', cat: 'Light', text: 'Two streetlights out on St Paul Road near the Gymkhana\nOut for a few days now. The corner by the gate is pitch dark.', road: 'St Paul Rd, near Bandra Gymkhana', lat: 19.05717, lng: 72.82549, at: T('-5 20:30'), photos: [], ward: { state: 'fixed', at: T('-3 18:40') }, verified: 4, hearts: 6, comments: [['-3 19:30', 'Both on tonight.']] },
-  { id: 'p-kantwadi-water', kind: 'problem', cat: 'Water', text: 'Dirty water in the taps in Kantwadi for three days now\nBrown for the first ten minutes every morning. Three buildings on this lane have it.', road: 'New Kantwadi Rd', lat: 19.06061, lng: 72.82458, at: T('-2 07:00'), photos: [], ward: { state: 'ack', at: T('-1 09:00') }, verified: 0, hearts: 8, comments: [['-1 07:30', 'Ours too. Boiling everything.']] },
-  { id: 'p-khardanda-waste', kind: 'problem', cat: 'Waste', text: 'Garbage at the Khar Danda koliwada entrance not cleared all week\nPile is now up to the wall. It goes into the creek when the tide comes in.', road: 'Danda Creek Rd, koliwada entrance', lat: 19.07668, lng: 72.82781, at: T('-3 08:30'), photos: ['garbage3'], ward: { state: 'none' }, verified: 0, hearts: 13, comments: [] },
-  { id: 'p-linking-footpath', kind: 'problem', cat: 'Footpath', text: 'Footpath dug up on Linking Road outside the shoe stalls, no barricade\nOpen trench for cables, about two feet deep. Shoppers walking straight into it.', road: 'Linking Rd, outside the shoe stalls', lat: 19.06189, lng: 72.83581, at: T('-1 12:40'), photos: ['linking'], ward: { state: 'none' }, verified: 0, hearts: 10, comments: [] },
-  { id: 'p-mountmary-pothole', kind: 'problem', cat: 'Pothole', text: 'Potholes all along Mount Mary Road up to the steps\nAutos refusing to go up. Older people walking to mass have to go around them on the road.', road: 'Mount Mary Rd, up to the steps', lat: 19.04735, lng: 72.82298, at: T('-4 09:00'), photos: ['pothole2'], ward: { state: 'progress', at: T('-1 11:00') }, verified: 0, hearts: 25, comments: [['-1 12:00', 'Patching started from the bottom end.']] },
-  { id: 'p-bandstand-light', kind: 'problem', cat: 'Light', text: 'Promenade lights off at the Bandstand fort end, very dark after 7\nHalf the lamps on the last stretch are off. Couples and walkers still there till late.', road: 'Bandstand promenade, fort end', lat: 19.04431, lng: 72.81938, at: T('-2 19:40'), photos: [], ward: { state: 'none' }, verified: 0, hearts: 9, comments: [] },
-  { id: 'p-waterfield-pothole', kind: 'problem', cat: 'Pothole', text: 'Deep pothole on Waterfield Road by the Bora Bora gate\nCars bottoming out. Filled with loose stones once and it washed out.', road: 'Waterfield Rd, by the Bora Bora gate', lat: 19.06225, lng: 72.83455, at: T('-5 22:10'), photos: ['pothole3'], ward: { state: 'fixed', at: T('-1 14:00') }, verified: 2, hearts: 7, comments: [['-1 18:00', 'Tarred now. Smooth.']] },
-  { id: 'p-patwardhan', kind: 'problem', cat: 'Footpath', text: 'Patwardhan Park track still broken, revamp waiting for approval\nWalking track tiles lifted on the far side. Papers said the revamp plan is still not cleared.', road: 'Patwardhan Park, Linking Rd gate', lat: 19.06398, lng: 72.83391, at: T('-7 07:30'), photos: ['park'], ward: { state: 'ack', at: T('-6 12:00') }, verified: 0, hearts: 19, comments: [] },
+  { id: 'p-chuim-waste', kind: 'problem', cat: 'Waste', text: 'garbage not picked from 3 days near Chuim Village bus stop\nbins full n bags torn, crows n dogs all over it. smell reaching 1st floor. complained on MyBMC app, nothing', road: 'Chuim Village Rd, by the bus stop', lat: 19.07357, lng: 72.82598, at: T('-2 08:40'), photos: ['garbage'], ward: { state: 'none' }, verified: 0, hearts: 14, comments: [['-2 11:05', 'same at the well side.. nobody came'], ['-1 09:30', 'called 1916, they gave a complaint no. lets see 🙄']] },
+  { id: 'p-chapel-pothole', kind: 'problem', cat: 'Pothole', text: 'pothole at Chapel Rd n Veronica Rd corner, near the church\nautos swerving into ppl walking. someone filled it with rubble, gone again. my activa almost fell today', road: 'Chapel Rd, Veronica Rd corner', lat: 19.05322, lng: 72.82838, at: T('-1 08:15'), photos: [], ward: { state: 'none' }, verified: 0, hearts: 6, comments: [] },
+  { id: 'p-elco-pothole', kind: 'problem', cat: 'Pothole', text: 'huge pothole outside Elco Market, 2 bikes slipped today\nright at the bus stop side, full of water after they washed the road.. cant see how deep. 3rd time complaining to BMC nothing happens', road: 'Hill Rd, outside Elco Market', lat: 19.05571, lng: 72.83206, at: T('0 07:10'), photos: ['pothole'], ward: { state: 'none' }, verified: 0, hearts: 22, comments: [['0 07:40', 'saw the 2nd one. delivery boy, he was ok bike not']] },
+  { id: 'p-16th-light', kind: 'problem', cat: 'Light', text: 'street light off since 2 weeks on 16th Road near Khar Gymkhana\nfull dark after 8, ladies walking back from station using phone torch. complained to Adani Electricity, ward says acknowledged', road: '16th Rd, near the Khar Gymkhana lane', lat: 19.07702, lng: 72.83092, at: T('-1 21:05'), photos: ['light'], ward: { state: 'ack', at: T('0 06:15') }, verified: 0, hearts: 9, comments: [] },
+  { id: 'p-hillrd-hawkers', kind: 'problem', cat: 'Footpath', text: 'hawkers back on Hill Rd footpath near St Peter\'s, AGAIN\nwhole footpath gone, ppl with kids walking on the road. ward said notices will go. kya bakwaas hai', road: "Hill Rd, near St Peter's Church", lat: 19.05522, lng: 72.83087, at: T('-6 07:40'), photos: [], ward: { state: 'ack', at: T('-5 11:00') }, verified: 0, hearts: 31, comments: [['-5 12:10', 'they pack up when the van comes n are back in 1 hr'], ['-3 18:20', 'after mass its worst, full stretch blocked']] },
+  { id: 'p-palinaka-water', kind: 'problem', cat: 'Water', text: 'pipe burst at Pali Naka, paani road pe since morning\nclean water just going in the gutter, our bldg tank not filling. called 1916, they said team is coming', road: 'Pali Mala Rd, Pali Naka', lat: 19.06283, lng: 72.82926, at: T('0 06:15'), photos: ['flood'], ward: { state: 'progress', at: T('0 07:30') }, verified: 0, hearts: 18, comments: [['0 07:45', 'BMC van aa gayi, ek side khod diya hai']] },
+  { id: 'p-nargis-tree', kind: 'problem', cat: 'Other', text: 'gulmohar fell across Nargis Dutt Rd, one lane blocked\nbig branch came down in the night wind, took a cable also. cars going one by one', road: 'Nargis Dutt Rd, Pali Hill', lat: 19.06702, lng: 72.82868, at: T('-1 06:30'), photos: ['tree'], ward: { state: 'fixed', at: T('-1 16:10') }, verified: 6, hearts: 12, comments: [['-1 17:00', 'cleared by evening, wood still lying on the side'], ['-1 20:00', 'road open now, checked on way back 👍']] },
+  { id: 'p-waroda-drain', kind: 'problem', cat: 'Other', text: 'manhole open on Waroda Rd near Holy Family, school kids walk here\nno cover, someone put a crate on it. bahut dangerous hai bhai, no light also on this stretch', road: 'Waroda Rd, near Holy Family', lat: 19.05409, lng: 72.82735, at: T('-4 08:05'), photos: ['drain'], ward: { state: 'fixed', at: T('-2 15:20') }, verified: 3, hearts: 20, comments: [['-2 16:00', 'new cover is on. checked it holds']] },
+  { id: 'p-bazar-waste', kind: 'problem', cat: 'Waste', text: 'बाज़ार रोड पे कूड़ा फिर भरा पड़ा है, मार्केट गेट के पास\nसुबह 6 बजे गाड़ी आई थी, 10 बजे तक फिर full. मछली वाला पानी Hill Road तक बह रहा है', road: 'Bazar Rd, near the market gate', lat: 19.05399, lng: 72.83162, at: T('-1 10:20'), photos: ['garbage2'], ward: { state: 'none' }, verified: 0, hearts: 7, comments: [] },
+  { id: 'p-carter-paver', kind: 'problem', cat: 'Footpath', text: 'broken paver blocks on Carter Rd promenade near Otters Club\nmy mother tripped on the morning walk. 3-4 blocks lifted near the 2nd bench, hard to see early. told the ward office', road: 'Carter Rd promenade, near Otters Club', lat: 19.06071, lng: 72.82177, at: T('-6 06:50'), photos: ['footpath'], ward: { state: 'ack', at: T('-4 12:00') }, verified: 0, hearts: 16, comments: [['-5 07:10', 'marked it with a stone for now']] },
+  { id: 'p-chapel-cable', kind: 'problem', cat: 'Light', text: 'cable hanging low on Chapel Rd near the mural wall\nblack cable came off the pole, tall ppl have to duck. dont know if its live?? Adani ko call kiya, ticket raised', road: 'Chapel Rd, by the mural wall', lat: 19.05317, lng: 72.82883, at: T('0 06:00'), photos: ['cables'], ward: { state: 'none' }, verified: 0, hearts: 5, comments: [] },
+  { id: 'p-perry-debris', kind: 'problem', cat: 'Waste', text: 'construction debris dumped on Perry Rd near D\'Monte Park\ntruck dropped rubble at night outside the bldg being redone. BEST bus squeezing past. useless, nobody checks these contractors', road: "Perry Rd, near D'Monte Park", lat: 19.05955, lng: 72.82631, at: T('-3 09:15'), photos: [], ward: { state: 'ack', at: T('-2 10:00') }, verified: 0, hearts: 11, comments: [] },
+  { id: 'p-stpaul-light', kind: 'problem', cat: 'Light', text: '2 streetlights out on St Paul Rd near Bandra Gymkhana\nout since few days, the corner by the gate is pitch dark', road: 'St Paul Rd, near Bandra Gymkhana', lat: 19.05717, lng: 72.82549, at: T('-5 20:30'), photos: [], ward: { state: 'fixed', at: T('-3 18:40') }, verified: 4, hearts: 6, comments: [['-3 19:30', 'both on tonight 👍']] },
+  { id: 'p-kantwadi-water', kind: 'problem', cat: 'Water', text: 'dirty water in taps in Kantwadi since 3 days\nbrown for first 10 mins every morning, 3 bldgs on this lane. koi aur bhi face kr rha hai kya??', road: 'New Kantwadi Rd', lat: 19.06061, lng: 72.82458, at: T('-2 07:00'), photos: [], ward: { state: 'ack', at: T('-1 09:00') }, verified: 0, hearts: 8, comments: [['-1 07:30', 'ours too. boiling everything']] },
+  { id: 'p-khardanda-waste', kind: 'problem', cat: 'Waste', text: 'खार दांडा कोळीवाड्याजवळ कचरा, आठवडाभर उचलला नाही\nढीग भिंतीपर्यंत आलाय. भरती आली की सगळा कचरा खाडीत जातो. वॉर्ड ऑफिसला दोनदा कळवलं', road: 'Danda Creek Rd, koliwada entrance', lat: 19.07668, lng: 72.82781, at: T('-3 08:30'), photos: ['garbage3'], ward: { state: 'none' }, verified: 0, hearts: 13, comments: [] },
+  { id: 'p-linking-footpath', kind: 'problem', cat: 'Footpath', text: 'footpath dug up on Linking Rd outside the shoe stalls, no barricade\nopen trench for cables, 2 ft deep since many days. shoppers walking straight into it. old uncle fell yesterday evng. ward office says its the contractor\'s job 🤦', road: 'Linking Rd, outside the shoe stalls', lat: 19.06189, lng: 72.83581, at: T('-1 12:40'), photos: ['linking'], ward: { state: 'none' }, verified: 0, hearts: 10, comments: [] },
+  { id: 'p-mountmary-pothole', kind: 'problem', cat: 'Pothole', text: 'Saala 4th time same potholes on Mount Mary Rd, BMC ko sharam bhi nahi aati\nautos refusing to go up, old ppl walking to the steps on the road. patching starts n washes out every time', road: 'Mount Mary Rd, up to the steps', lat: 19.04735, lng: 72.82298, at: T('-4 09:00'), photos: ['pothole2'], ward: { state: 'progress', at: T('-1 11:00') }, verified: 0, hearts: 25, comments: [['-1 12:00', 'patching started from the bottom end today']] },
+  { id: 'p-bandstand-light', kind: 'problem', cat: 'Light', text: 'promenade lights off at Bandstand fort end, very dark after 7\nhalf the lamps on the last stretch are off. couples n walkers still there late. complained on MyBMC app twice, who else do we even call', road: 'Bandstand promenade, fort end', lat: 19.04431, lng: 72.81938, at: T('-2 19:40'), photos: [], ward: { state: 'none' }, verified: 0, hearts: 9, comments: [] },
+  { id: 'p-waterfield-pothole', kind: 'problem', cat: 'Pothole', text: 'Bora Bora gate pothole on Waterfield Rd wapas khul gya\nbhar diya tha last week but 2 din baarish me wapas khul gya.. fixed mat mark karo abhi. cars bottoming out again', road: 'Waterfield Rd, by the Bora Bora gate', lat: 19.06225, lng: 72.83455, at: T('-5 22:10'), photos: ['pothole3'], ward: { state: 'fixed', at: T('-1 14:00') }, verified: 2, hearts: 7, comments: [['-1 18:00', 'they only tarred the top, no base'], ['0 07:30', 'confirm, gravel all over again this morning']] },
+  { id: 'p-patwardhan', kind: 'problem', cat: 'Footpath', text: 'Patwardhan Park track still broken, revamp pending since months\nwalking track tiles lifted on the far side. paper said plan not cleared. wrote to the ward office also. pathetic, ppl twisting ankles', road: 'Patwardhan Park, Linking Rd gate', lat: 19.06398, lng: 72.83391, at: T('-7 07:30'), photos: ['park'], ward: { state: 'ack', at: T('-6 12:00') }, verified: 0, hearts: 19, comments: [] },
 
   // Asks
-  { id: 'a-ladder', kind: 'ask', text: 'Anyone have a ladder to borrow for two days?\nNeed to change a ceiling light. Six feet is enough. Will return it the next evening.', road: 'Ranwar, behind the chapel', lat: 19.05366, lng: 72.82729, at: T('0 06:20'), photos: [], niche: 'Borrow', comments: [['0 06:50', 'I have a folding one. Lane next to the bakery, ask at the gate.']] },
-  { id: 'a-plants', kind: 'ask', text: 'Need someone to water my plants for 3 days\nGoing to Pune for three days. Ten pots on the balcony, keys with the watchman. Happy to pay.', road: 'Pali Village, near the market', lat: 19.06338, lng: 72.83021, at: T('-1 18:30'), photos: [], niche: 'Help', comments: [] },
-  { id: 'a-electrician', kind: 'ask', text: 'Reliable electrician for a fan and two switches?\nFan regulator gone and two switches spark. Someone who comes when they say.', road: 'Chapel Rd', lat: 19.05212, lng: 72.82857, at: T('-1 10:00'), photos: [], niche: 'Help', comments: [['-1 11:30', 'The electrical shop by the market sends someone the same day. Ask at the counter.']] },
-  { id: 'a-upi', kind: 'ask', text: 'Can someone help my mother set up UPI? She is 74\nShe has the phone and the bank app, just needs someone patient to sit with her for half an hour.', road: 'Linking Rd, near 33rd Rd', lat: 19.06509, lng: 72.83441, at: T('-2 16:00'), photos: [], niche: 'Help', comments: [['-1 09:20', 'Happy to help one morning this week, no charge.']] },
-  { id: 'a-cat', kind: 'ask', text: 'Lost grey cat with a white paw, near Ranwar square\nAnswers to Moti. Went out of the window two nights ago. Please check your building stairs.', road: 'Ranwar Village Square', lat: 19.05388, lng: 72.82776, at: T('-1 20:10'), photos: ['cat'], niche: 'Lost and found', comments: [] },
-  { id: 'a-tutor', kind: 'ask', text: 'Maths tutor for class 8 near Pali Hill, evenings?\nICSE board. Two evenings a week at our place if possible.', road: 'Pali Hill, Nargis Dutt Rd side', lat: 19.06519, lng: 72.82745, at: T('-3 19:00'), photos: [], niche: 'Find someone', comments: [] },
-  { id: 'a-auto', kind: 'ask', text: 'Going to the Corona Garden flea market? Can share an auto\nLeaving from the steps around 4. Two of us, room for two more.', road: 'Mount Mary Rd', lat: 19.04893, lng: 72.82283, at: T('0 06:50'), photos: [], niche: 'Share', comments: [] },
-  { id: 'a-cabshare', kind: 'ask', text: 'Anyone going to Bandra station early tomorrow? Can share a cab\nTrain at 6:40, leaving from the Khar Danda bus stop around 6. Room for two.', road: 'Danda Creek Rd, bus stop', lat: 19.07572, lng: 72.82533, at: T('0 07:20'), photos: [], niche: 'Share', comments: [] },
-  { id: 'a-papers', kind: 'ask', text: 'Old newspapers to give away in Chuim, who wants them for packing?\nAbout two months of papers, tied up. Free, just collect from the ground floor.', road: 'Chuim Village Rd', lat: 19.07447, lng: 72.82512, at: T('-1 13:00'), photos: [], niche: 'Give away', comments: [] },
+  { id: 'a-ladder', kind: 'ask', text: 'anyone have a ladder? need for 2 days\nceiling light change, 6 ft enough. will return next evng. behind the chapel, Ranwar', road: 'Ranwar, behind the chapel', lat: 19.05366, lng: 72.82729, at: T('0 06:20'), photos: [], niche: 'Borrow', comments: [['0 06:50', 'i have a folding one, lane next to the bakery, ask at gate']] },
+  { id: 'a-plants', kind: 'ask', text: 'koi mere plants ko 3 din paani de sakta hai??\njaa rhi hu pune, 10 pots balcony me, keys watchman ke paas. will pay 🙏', road: 'Pali Village, near the market', lat: 19.06338, lng: 72.83021, at: T('-1 18:30'), photos: [], niche: 'Help', comments: [] },
+  { id: 'a-electrician', kind: 'ask', text: 'anyone knows good electrician near Chapel Rd? need today itself\nfan regulator gone n 2 switches sparking. someone who actually comes when they say', road: 'Chapel Rd', lat: 19.05212, lng: 72.82857, at: T('-1 10:00'), photos: [], niche: 'Help', comments: [['-1 11:30', 'electrical shop near Bazar Rd market sends someone same day, ask at counter']] },
+  { id: 'a-upi', kind: 'ask', text: 'कोई मम्मी को UPI set up करवा सकता है? 74 की हैं\nphone और bank app है, बस half hour patience से बैठना है. Linking Rd, 33rd Rd side', road: 'Linking Rd, near 33rd Rd', lat: 19.06509, lng: 72.83441, at: T('-2 16:00'), photos: [], niche: 'Help', comments: [['-1 09:20', 'happy to help one morning, no charge']] },
+  { id: 'a-cat', kind: 'ask', text: 'LOST CAT!! grey with white paw near Ranwar square\nname Moti, jumped out of the window 2 nights ago. pls check ur bldg stairs. call 98xxx xxx41', road: 'Ranwar Village Square', lat: 19.05388, lng: 72.82776, at: T('-1 20:10'), photos: ['cat'], niche: 'Lost and found', comments: [] },
+  { id: 'a-tutor', kind: 'ask', text: 'maths tutor for class 8 near Pali Hill? evenings\nICSE board. 2 evenings a week at our place pls, no coaching class wala', road: 'Pali Hill, Nargis Dutt Rd side', lat: 19.06519, lng: 72.82745, at: T('-3 19:00'), photos: [], niche: 'Find someone', comments: [] },
+  { id: 'a-auto', kind: 'ask', text: 'kisi ne mera helmet dekha?? kala, Mount Mary steps ke paas\nscooty pe rakha tha.. 2nd helmet this month 😭😭', road: 'Mount Mary Rd', lat: 19.04893, lng: 72.82283, at: T('0 06:50'), photos: [], niche: 'Lost and found', comments: [] },
+  { id: 'a-cabshare', kind: 'ask', text: 'anyone going to Bandra station west side early? cab share\ntrain at 6:40, leaving from Khar Danda bus stop around 6. room for 2', road: 'Danda Creek Rd, bus stop', lat: 19.07572, lng: 72.82533, at: T('0 07:20'), photos: [], niche: 'Share', comments: [] },
+  { id: 'a-papers', kind: 'ask', text: 'gate ke saamne gaay baithi hai, hil hi nahi rhi 😂 kiski hai ye\nChuim Village Rd. car nikalni hai office ke liye.. pls', road: 'Chuim Village Rd', lat: 19.07447, lng: 72.82512, at: T('-1 13:00'), photos: [], niche: 'Random', comments: [] },
 
   // Events. Real public listings at real venues (no owner tick, no contact details), dates moved into the coming two weeks.
-  { id: 'e-openmic', kind: 'event', text: 'Comedy open mic in Bandra\nNew comics trying out sets. 18 and over, carry a photo ID.', placeId: 'chimbai', road: 'Chimbai Village Theatre, Chimbai Rd', lat: 19.05804, lng: 72.823329, start: T('3 20:00'), end: T('3 22:00'), photos: ['mic'], interested: 38, source: 'Listing on allevents.in', comments: [['-1 09:00', 'Is there a sign-up for spots on the night?']] },
-  { id: 'e-pinkmoss', kind: 'event', text: 'Pink Moss live, the Bandra sessions\nLive set on Waterfield Road. 21 and over, carry a photo ID.', placeId: 'borabora', road: 'Bora Bora, Waterfield Rd', lat: 19.062081, lng: 72.834397, start: T('4 21:00'), end: T('4 23:30'), photos: ['crowd'], interested: 54, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-salt', kind: 'event', text: 'SALT, a food and culture festival\nTwo days of food stalls, music and a small makers market in the garden.', placeId: 'corona', road: 'Corona Garden, St John Baptist Rd', lat: 19.048872, lng: 72.826383, start: T('5 12:00'), end: T('6 22:00'), photos: ['food'], interested: 112, source: 'Homegrown, Time Out', comments: [['-1 18:00', 'Going on the second day. Last time the queue for the bao was huge, go early.']] },
-  { id: 'e-sprints', kind: 'event', text: 'Hill sprints at Bandra Fort\nEarly run up the fort slope. All paces, bring water.', placeId: 'fort', road: 'Bandra Fort, Land\'s End', lat: 19.041844, lng: 72.81837, start: T('6 06:00'), end: T('6 07:30'), photos: ['fort'], interested: 21, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-duos', kind: 'event', text: 'Duos, a stand-up night\nTwo comics, one set each, then together.', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.075042, lng: 72.834405, start: T('6 20:00'), end: T('6 21:30'), photos: ['stage2'], interested: 29, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-standup', kind: 'event', text: 'Stand-up Virgin, new stand-up\nFirst-time sets from comics finding their feet.', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.07501, lng: 72.834396, start: T('4 20:00'), end: T('4 21:30'), photos: ['mic'], interested: 17, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-philosophy', kind: 'event', text: 'Free intro evening to a philosophy course\nAn open evening on what the course covers. No booking needed.', placeId: 'acropolis', road: 'New Acropolis Bandra, 15th Rd', lat: 19.067448, lng: 72.831761, start: T('8 19:30'), end: T('8 21:00'), photos: [], interested: 12, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-flea', kind: 'event', text: 'Bazaar and Beyond flea market\nClothes, plants, home bits and food. Bring a bag.', placeId: 'corona', road: 'Corona Garden, St John Baptist Rd', lat: 19.04883, lng: 72.826336, start: T('12 15:00'), end: T('12 22:00'), photos: ['flea'], interested: 64, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-allowme', kind: 'event', text: 'Allow Me!, a stand-up show\nFull-length stand-up show at the auditorium off Linking Road.', placeId: 'bgm', road: 'Bal Gandharva Rang Mandir, 24th Rd', lat: 19.063945, lng: 72.83344, start: T('12 19:00'), end: T('12 21:00'), photos: ['stage2'], interested: 47, source: 'Listing on allevents.in', comments: [] },
-  { id: 'e-syllabus', kind: 'event', text: 'Out of Syllabus, stand-up\nAfternoon show. Doors open 15 minutes before.', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.075038, lng: 72.834384, start: T('13 16:00'), end: T('13 17:30'), photos: ['mic'], interested: 22, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-openmic', kind: 'event', text: 'Comedy open mic at Chimbai Village Theatre\nnew comics trying sets. 18+ only, carry ID. saw it on allevents, anyone going??', placeId: 'chimbai', road: 'Chimbai Village Theatre, Chimbai Rd', lat: 19.05804, lng: 72.823329, start: T('3 20:00'), end: T('3 22:00'), photos: ['mic'], interested: 38, source: 'Listing on allevents.in', comments: [['-1 09:00', 'is there sign up for spots on the night?']] },
+  { id: 'e-pinkmoss', kind: 'event', text: 'Pink Moss live at Bora Bora, the Bandra sessions\nlive set on Waterfield Rd. 21+ carry photo ID. listing on allevents', placeId: 'borabora', road: 'Bora Bora, Waterfield Rd', lat: 19.062081, lng: 72.834397, start: T('4 21:00'), end: T('4 23:30'), photos: ['crowd'], interested: 54, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-salt', kind: 'event', text: 'SALT food and culture festival at Corona Garden\n2 days of food stalls, music n a small makers market. going on day 2, who else?', placeId: 'corona', road: 'Corona Garden, St John Baptist Rd', lat: 19.048872, lng: 72.826383, start: T('5 12:00'), end: T('6 22:00'), photos: ['food'], interested: 112, source: 'Homegrown, Time Out', comments: [['-1 18:00', 'last time the bao queue was huge, go early']] },
+  { id: 'e-sprints', kind: 'event', text: 'hill sprints at Bandra Fort, early morning\nrun up the fort slope, all paces welcome. bring a bottle', placeId: 'fort', road: 'Bandra Fort, Land\'s End', lat: 19.041844, lng: 72.81837, start: T('6 06:00'), end: T('6 07:30'), photos: ['fort'], interested: 21, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-duos', kind: 'event', text: 'Duos, a stand-up night at Khar Comedy Club\n2 comics, one set each then together. listing on allevents', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.075042, lng: 72.834405, start: T('6 20:00'), end: T('6 21:30'), photos: ['stage2'], interested: 29, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-standup', kind: 'event', text: 'Stand-up Virgin at Khar Comedy Club, first timers\nnew comics finding their feet. pls be kind 😅', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.07501, lng: 72.834396, start: T('4 20:00'), end: T('4 21:30'), photos: ['mic'], interested: 17, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-philosophy', kind: 'event', text: 'free intro evening to a philosophy course, New Acropolis\nopen evening on what the course covers. no booking needed', placeId: 'acropolis', road: 'New Acropolis Bandra, 15th Rd', lat: 19.067448, lng: 72.831761, start: T('8 19:30'), end: T('8 21:00'), photos: [], interested: 12, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-flea', kind: 'event', text: 'Bazaar and Beyond flea market at Corona Garden\nclothes, plants, home stuff n food. bring ur own bag', placeId: 'corona', road: 'Corona Garden, St John Baptist Rd', lat: 19.04883, lng: 72.826336, start: T('12 15:00'), end: T('12 22:00'), photos: ['flea'], interested: 64, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-allowme', kind: 'event', text: 'Allow Me!, a full stand-up show at Bal Gandharva\nthe auditorium off Linking Rd. listing on allevents', placeId: 'bgm', road: 'Bal Gandharva Rang Mandir, 24th Rd', lat: 19.063945, lng: 72.83344, start: T('12 19:00'), end: T('12 21:00'), photos: ['stage2'], interested: 47, source: 'Listing on allevents.in', comments: [] },
+  { id: 'e-syllabus', kind: 'event', text: 'Out of Syllabus, afternoon stand-up at Khar Comedy Club\ndoors open 15 mins before', placeId: 'kcc', road: 'Khar Comedy Club, Linking Rd', lat: 19.075038, lng: 72.834384, start: T('13 16:00'), end: T('13 17:30'), photos: ['mic'], interested: 22, source: 'Listing on allevents.in', comments: [] },
+  // Resident events (round 6): small, weekly, a count or an RSVP line
+  { id: 'e-yoga', kind: 'event', text: 'free yoga every week, 6.30 am at Joggers\' Park\nnear the sea side gate.. beginners welcome, bring own mat. 9 regulars now, come 🙏', placeId: 'joggers', road: 'Joggers\' Park, Carter Rd', lat: 19.059633, lng: 72.821379, start: T('1 06:30'), end: T('1 07:30'), photos: [], interested: 9, postedAs: 'neighbour', comments: [['-1 19:00', 'coming with my sister 🙋']] },
+  { id: 'e-chess', kind: 'event', text: 'chess for kids every week, 10 am at Patwardhan Park\nfree, i just like teaching. benches near gate 2. 6 kids came last time, RSVP in comments pls', placeId: 'patwardhan', road: 'Patwardhan Park, Linking Rd', lat: 19.064156, lng: 72.834111, start: T('3 10:00'), end: T('3 11:30'), photos: [], interested: 6, postedAs: 'neighbour', comments: [['-1 20:15', 'my son (9) will come, put us down']] },
+  { id: 'e-cleanup', kind: 'event', text: 'Bandstand cleanup drive 7 am, bring gloves\nmeet at the fort steps. 15 ppl confirmed so far, join for an hour', road: 'Bandstand promenade, fort steps', lat: 19.0445, lng: 72.8193, start: T('5 07:00'), end: T('5 09:00'), photos: [], interested: 15, postedAs: 'neighbour', comments: [] },
   // Sample events at invented places (sponsored, with the place's contact as the action)
-  { id: 'e-chai-acoustic', kind: 'event', sample: true, text: 'Acoustic evening on the chai stall steps\nTwo guitars, requests welcome. Chai on the house for the first twenty.', placeId: 'chaico', road: 'Chapel Road Chai Co., Chapel Rd', lat: 19.05291, lng: 72.82883, start: T('2 19:00'), end: T('2 21:00'), photos: ['chai'], interested: 23, sponsored: true, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'e-chai-acoustic', kind: 'event', sample: true, text: 'acoustic evening on our chai stall steps 🎸\n2 guitars, requests welcome. first 20 chai FREE. Chapel Road Chai Co.', placeId: 'chaico', road: 'Chapel Road Chai Co., Chapel Rd', lat: 19.05291, lng: 72.82883, start: T('2 19:00'), end: T('2 21:00'), photos: ['chai'], interested: 23, sponsored: true, cta: 'place', postedAs: 'place', comments: [] },
 
   // Deals: sample offers at invented places
-  { id: 'd-loaves', kind: 'deal', sample: true, text: '20% off loaves till 4 pm\nAll loaves, today only. Brown, white and the poi.', placeId: 'bakehouse', road: 'Waroda Lane Bakehouse, Waroda Rd', lat: 19.05431, lng: 72.82741, start: T('0 06:00'), till: T('0 16:00'), photos: ['bread'], interested: 26, sponsored: true, cta: 'place', postedAs: 'place', comments: [] },
-  { id: 'd-sizzler', kind: 'deal', sample: true, text: 'Free dessert with any sizzler for two\nLunch and dinner. Ask for it when you order.', placeId: 'sizzle', road: 'Perry Cross Sizzle Room, Perry Cross Rd', lat: 19.05928, lng: 72.82298, start: T('0 06:00'), till: T('4 23:00'), photos: ['sizzler'], interested: 19, cta: 'place', postedAs: 'place', comments: [] },
-  { id: 'd-happyhour', kind: 'deal', sample: true, text: 'Happy hours till 8 pm, all week\nTwo for one on house pours from 6 to 8 pm.', placeId: 'roofclub', road: 'Sherly Rajan Roof Club, Sherly Rajan Rd', lat: 19.06556, lng: 72.82493, start: T('0 06:00'), till: T('6 20:00'), photos: ['bar'], interested: 33, cta: 'place', postedAs: 'place', comments: [] },
-  { id: 'd-coffee', kind: 'deal', sample: true, text: 'Cold coffee at ₹99 before noon\nAny cold coffee, any size, till 12 every day.', placeId: 'coldbrew', road: 'Pali Naka Cold Brew, Pali Mala Rd', lat: 19.06262, lng: 72.82878, start: T('0 06:00'), till: T('6 12:00'), photos: ['icedcoffee'], interested: 41, cta: 'place', postedAs: 'place', comments: [] },
-  { id: 'd-biryani', kind: 'deal', sample: true, text: '₹100 off the family biryani pack\nFor the four-person pack, dine in or takeaway.', placeId: 'biryani', road: 'Bazar Road Biryani House, Bazar Rd', lat: 19.05417, lng: 72.83138, start: T('0 06:00'), till: T('6 23:00'), photos: ['lucky'], interested: 15, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-loaves', kind: 'deal', sample: true, text: '20% off all loaves till 4 pm\nbrown, white n poi, today only. Waroda Lane Bakehouse, behind the chapel', placeId: 'bakehouse', road: 'Waroda Lane Bakehouse, Waroda Rd', lat: 19.05431, lng: 72.82741, start: T('0 06:00'), till: T('0 16:00'), photos: ['bread'], interested: 26, sponsored: true, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-sizzler', kind: 'deal', sample: true, text: 'Free dessert with any sizzler for two\nLunch and dinner. Just ask when you order. Perry Cross Sizzle Room, family tables upstairs.', placeId: 'sizzle', road: 'Perry Cross Sizzle Room, Perry Cross Rd', lat: 19.05928, lng: 72.82298, start: T('0 06:00'), till: T('4 23:00'), photos: ['sizzler'], interested: 19, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-happyhour', kind: 'deal', sample: true, text: 'HAPPY HOURS 6 to 8 pm, 1+1 on house pours!!\nAll week at Sherly Rajan Roof Club. Live sets most weeks. Book a table: 98xxx xxx55', placeId: 'roofclub', road: 'Sherly Rajan Roof Club, Sherly Rajan Rd', lat: 19.06556, lng: 72.82493, start: T('0 06:00'), till: T('6 20:00'), photos: ['bar'], interested: 33, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-coffee', kind: 'deal', sample: true, text: 'Cold coffee @ ₹99 before noon ☕\nAny cold coffee, any size, till 12 every day. Pali Naka Cold Brew, Pali Mala Rd.', placeId: 'coldbrew', road: 'Pali Naka Cold Brew, Pali Mala Rd', lat: 19.06262, lng: 72.82878, start: T('0 06:00'), till: T('6 12:00'), photos: ['icedcoffee'], interested: 41, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-biryani', kind: 'deal', sample: true, text: 'family biryani pack pe ₹100 off\n4 log ka pack, dine in ya takeaway. Bazar Road Biryani House, market gate ke paas', placeId: 'biryani', road: 'Bazar Road Biryani House, Bazar Rd', lat: 19.05417, lng: 72.83138, start: T('0 06:00'), till: T('6 23:00'), photos: ['lucky'], interested: 15, cta: 'place', postedAs: 'place', comments: [] },
 
-  { id: 'd-juice', kind: 'deal', sample: true, text: 'Second juice at half price before 11 am\nAny fresh juice, any size. Show this at the counter.', placeId: 'unionjuice', road: 'Union Park Juice Bar, Union Park Rd', lat: 19.07028, lng: 72.82772, start: T('0 06:00'), till: T('5 11:00'), photos: [], interested: 9, cta: 'place', postedAs: 'place', comments: [] },
+  { id: 'd-juice', kind: 'deal', sample: true, text: '2nd juice half price before 11 am\nany fresh juice any size, show this pin. Union Park Juice Bar', placeId: 'unionjuice', road: 'Union Park Juice Bar, Union Park Rd', lat: 19.07028, lng: 72.82772, start: T('0 06:00'), till: T('5 11:00'), photos: [], interested: 9, cta: 'place', postedAs: 'place', comments: [] },
 
   // Notices (samples)
-  { id: 'n-watercut', kind: 'notice', text: 'Water cut in Ranwar lanes, 10 am to 6 pm\nSociety office says no water in Ranwar lanes, Chapel Rd and Veronica Rd while the main on Hill Rd is repaired. Store water the night before.', road: 'Ranwar Village lanes', lat: 19.05349, lng: 72.82752, at: T('-1 09:10'), start: T('1 10:00'), end: T('1 18:00'), photos: [], source: 'Society office notice', comments: [['-1 10:00', 'Tanker comes to Chapel Rd at 1 pm, the office said.']] },
-  { id: 'n-salt-road', kind: 'notice', text: 'St John Baptist Road one way during the SALT festival\nCars only from the Mount Mary side on both days. No parking on the garden side.', road: 'St John Baptist Rd, Corona Garden', lat: 19.04851, lng: 72.82578, at: T('0 06:30'), start: T('5 10:00'), end: T('6 23:00'), photos: [], source: 'Organisers’ notice', comments: [] },
-  { id: 'n-chuim-pickup', kind: 'notice', text: 'Garbage truck off in Chuim for a day, keep wet waste in\nTruck is in for repair. Keep wet waste in until the next morning, the pickup is at 7.', road: 'Chuim Village', lat: 19.07401, lng: 72.82552, at: T('0 06:30'), start: T('2 06:00'), end: T('2 12:00'), photos: [], source: 'Chuim residents’ group', comments: [] },
-  { id: 'n-carter-clean', kind: 'notice', text: 'Carter Road promenade clean-up, 7 am\nGloves and bags given at the Joggers\' Park gate. Come for an hour if you can.', road: 'Carter Rd promenade, Joggers\' Park end', lat: 19.05995, lng: 72.82132, at: T('-1 17:00'), start: T('6 07:00'), end: T('6 09:00'), photos: [], source: 'Carter Road residents', comments: [] },
-  { id: 'n-linking-dig', kind: 'notice', text: 'Linking Road footpath work, shoe stall side closed 7 am to 11 am\nThe cable trench is being refilled. Walk on the Patwardhan Park side till it is done.', road: 'Linking Rd, shoe stall side', lat: 19.06238, lng: 72.83579, at: T('0 06:40'), start: T('1 07:00'), end: T('3 11:00'), photos: [], source: 'Ward notice board', comments: [] },
-  { id: 'n-danda-water', kind: 'notice', text: 'Low water pressure on Danda Creek Road, 6 am to 9 am\nThe main is being flushed. Society office says store a bucket the night before.', road: 'Danda Creek Rd', lat: 19.07621, lng: 72.82684, at: T('0 07:05'), start: T('3 06:00'), end: T('3 09:00'), photos: [], source: 'Society office notice', comments: [] },
+  { id: 'n-watercut', kind: 'notice', text: 'Water cut in Ranwar lanes, 10 am to 6 pm\nsociety office says no BMC water supply in Ranwar lanes, Chapel Rd n Veronica Rd while the main on Hill Rd is repaired. store water the night before 🙏', road: 'Ranwar Village lanes', lat: 19.05349, lng: 72.82752, at: T('-1 09:10'), start: T('1 10:00'), end: T('1 18:00'), photos: [], source: 'Society office notice', comments: [['-1 10:00', 'tanker comes to Chapel Rd at 1, office said']] },
+  { id: 'n-salt-road', kind: 'notice', text: 'St John Baptist Rd one way during SALT fest\ncars only from the Mount Mary side both days. no parking on the garden side, traffic police will tow', road: 'St John Baptist Rd, Corona Garden', lat: 19.04851, lng: 72.82578, at: T('0 06:30'), start: T('5 10:00'), end: T('6 23:00'), photos: [], source: 'Organisers’ notice', comments: [] },
+  { id: 'n-chuim-pickup', kind: 'notice', text: 'चुईममध्ये एक दिवस कचरा गाडी येणार नाही\nगाडी दुरुस्तीला गेली आहे. ओला कचरा घरातच ठेवा, दुसऱ्या दिवशी सकाळी ७ वाजता गाडी येईल', road: 'Chuim Village', lat: 19.07401, lng: 72.82552, at: T('0 06:30'), start: T('2 06:00'), end: T('2 12:00'), photos: [], source: 'Chuim residents’ group', comments: [] },
+  { id: 'n-carter-clean', kind: 'notice', text: 'Carter Rd promenade clean-up, 7 am, come for an hour\ngloves n bags at the Joggers\' Park gate. 15 ppl confirmed so far, join', road: 'Carter Rd promenade, Joggers\' Park end', lat: 19.05995, lng: 72.82132, at: T('-1 17:00'), start: T('6 07:00'), end: T('6 09:00'), photos: [], source: 'Carter Road residents', comments: [] },
+  { id: 'n-linking-dig', kind: 'notice', text: 'Linking Rd footpath work, shoe stall side closed 7 to 11 am\ncable trench being refilled. walk on the Patwardhan Park side till its done', road: 'Linking Rd, shoe stall side', lat: 19.06238, lng: 72.83579, at: T('0 06:40'), start: T('1 07:00'), end: T('3 11:00'), photos: [], source: 'Ward notice board', comments: [] },
+  { id: 'n-danda-water', kind: 'notice', text: 'low water pressure on Danda Creek Rd, 6 to 9 am\nmain is being flushed. society says store a bucket the night before', road: 'Danda Creek Rd', lat: 19.07621, lng: 72.82684, at: T('0 07:05'), start: T('3 06:00'), end: T('3 09:00'), photos: [], source: 'Society office notice', comments: [] },
 ];
 // One text per item: the first line is the title everywhere, the rest is the detail
 ITEMS.forEach((it) => { const s = splitText(it.text); it.title = s.title; it.body = s.body; });
@@ -1726,7 +1757,7 @@ function layoutLabels() {
   const boxes = []; hiddenLabels = 0;
   const recs = MK.filter((r) => !r.cluster).sort((a, b) => (b.id === S.selected) - (a.id === S.selected));
   MK.forEach((r) => { const el = r.marker.getElement(); if (!el) return; const d = el.querySelector('.mk-disc,.mk-cluster,.mk-far'); if (d) boxes.push(d.getBoundingClientRect()); });
-  const ui = $$('#mapui .mapctl, #mapui .locate, #mapui .radiusbtn, #mapui .pill-hint:not(.hide), #topsnack.show, #mapui .offline-line, #mapui .pill-mode, #mapui .carousel:not(.shut) .mcard, #mapui .cardpill, #mapui .peek').map((e) => e.getBoundingClientRect());
+  const ui = $$('#mapui .mapctl, #mapui .locate, #mapui .radiusbtn, #mapui .pill-hint:not(.hide), #mapui .mapwardline, #topsnack.show, #mapui .offline-line, #mapui .pill-mode, #mapui .carousel:not(.shut) .mcard, #mapui .cardpill, #mapui .peek').map((e) => e.getBoundingClientRect());
   const A = $('#app').getBoundingClientRect(); const navTop = $('#nav').classList.contains('hide') ? A.bottom : $('#nav').getBoundingClientRect().top;
   recs.forEach((r) => {
     const el = r.marker.getElement(); if (!el) return;
@@ -1832,16 +1863,26 @@ function miniMap(host, it, label, opts) {
 /* ---- 40-home.js ---- */
 /* Home: masthead, docked nav and lens menu, the map overlays for each lens, Buzz carousel, peeks */
 
-function whereLine(a) {
+// Round 5: when the browser knows where the phone is, say how the chosen location relates to it. Distances, never times.
+function hereLine(a) {
   if (a.src === 'gps') return 'You are here';
-  if (a.src === 'saved') { const l = savedLoc(a.id); if (l && l.label && l.label !== l.name) return l.label; return 'Your area'; }
-  return 'Picked location';
+  if (!GEO.pos || GEO.state === 'denied') return null;
+  const d = distM(GEO.pos, a);
+  if (d <= 300) return 'You are here';
+  if (!inBandraWest(GEO.pos)) return 'You are in ' + (GEO.place ? GEO.place.name : 'another area');
+  return fmtDist(d) + ' from you';
+}
+const lowFirst = (s) => s.replace(/^You /, 'you ');
+function whereLine(a) {
+  const h = hereLine(a);
+  if (a.src === 'saved') { const l = savedLoc(a.id); if (l && l.label && l.label !== l.name) return l.label + (h ? ', ' + lowFirst(h) : ''); return h || 'Your area'; }
+  return h || 'Picked location';
 }
 // What the masthead names: Bandra West while Buzz shows Bandra's Buzz from outside; a custom saved name big, with its place below
 function mastPlace() {
   const a = area();
   if (isOutside() && S.lens === 'buzz') return { name: 'Bandra West', sub: '', where: 'You are in ' + a.name, aria: 'Bandra West Buzz' };
-  if (a.src === 'saved') { const l = savedLoc(a.id); if (l && l.label && l.label !== l.name && l.label !== 'Home' && l.label !== 'Work') return { name: l.label, sub: '', where: l.name + (l.sub ? ', ' + l.sub : ''), aria: l.label }; }
+  if (a.src === 'saved') { const l = savedLoc(a.id); if (l && l.label && l.label !== l.name && l.label !== 'Home' && l.label !== 'Work') { const h = hereLine(a); return { name: l.label, sub: '', where: l.name + (h ? ', ' + lowFirst(h) : l.sub ? ', ' + l.sub : ''), aria: l.label }; } }
   return { name: a.name, sub: a.sub || '', where: whereLine(a), aria: a.name };
 }
 function renderMast() {
@@ -1877,6 +1918,7 @@ function toggleLensMenu(open) {
 /* Lens and view changes. From a page, the nav closes pages first. */
 // Each card section remembers its own current card across section switches
 const CARPOS = {};
+const FIXLINE = { on: false };
 async function setLens(k, opts) {
   opts = opts || {};
   toggleLensMenu(false);
@@ -1885,6 +1927,9 @@ async function setLens(k, opts) {
   S.lens = k; S.selected = null; closePeek(true);
   S.buzzIndex = 0;
   if (CARD_LENS[k] && CARPOS[k]) S.selected = CARPOS[k];
+  // the Fix map says the ward line once per session, the first time Fix opens
+  FIXLINE.on = false;
+  if (k === 'fix') { let seen = false; try { seen = !!sessionStorage.getItem('ptp-fixline'); } catch (e) {} FIXLINE.on = !seen; } // marked seen once the map shows it
   renderHome({ fit: !opts.noFit });
 }
 function setView(v) { S.view = v; renderHome({ fit: v === 'map' }); }
@@ -1923,12 +1968,13 @@ function renderMapUI(opts) {
   const top = mastH();
   const outside = isOutside();
   let html = '';
-  html += '<div class="pill-hint hide" style="top:' + (top + 54) + 'px" aria-live="polite"></div>';
+  html += '<div class="pill-hint hide" style="top:' + (top + (lens === 'fix' && (FIXLINE.on || outside) ? 64 : 54)) + 'px" aria-live="polite"></div>';
   html += '<div class="mapctl" style="top:' + (top + 58) + 'px"><button type="button" data-act="zoom-in" aria-label="Zoom in">' + icon('plus', 20) + '</button><button type="button" data-act="zoom-out" aria-label="Zoom out">' + icon('minus', 20) + '</button></div>';
   html += radiusBtn(top + 162);
   html += '<button type="button" class="locate press" style="top:' + (top + 218) + 'px" data-act="locate" aria-label="Back to ' + esc(area().name) + '">' + icon('target', 20) + '</button>';
   if (S.offline) html += '<div class="offline-line" style="top:' + (top + 10) + 'px">' + icon('wifi-off', 18) + '<span class="grow">Phone offline. Showing what was saved.</span></div>';
   else if (outside && lens === 'fix') html += '<div class="offline-line" style="top:' + (top + 10) + 'px">' + icon('info', 18) + '<span class="grow">Fixes are tracked in Bandra West only, for now.</span></div>';
+  else if (lens === 'fix' && FIXLINE.on && (() => { try { sessionStorage.setItem('ptp-fixline', '1'); } catch (e) {} return true; })()) html += '<div class="wardline mapwardline" style="top:' + (top + 10) + 'px" role="status">' + icon('info', 14) + '<span class="grow">' + WARD_ONLY + '</span><button type="button" class="wlx" data-act="wardline-x" aria-label="Dismiss">' + icon('close', 16) + '</button></div>';
   if (cards) {
     const shut = cardsShut(lens), tint = LENS_TINT[lens];
     if (items.length) {
@@ -2129,6 +2175,12 @@ function softBack() {
 }
 
 /* ---- 41-lists.js ---- */
+// Round 5: the 52 px square photo with a 12 px corner (as on the map cards), or a plain tint square in the kind colour
+const THUMB_KINDS = { problem: 1, event: 1, deal: 1 };
+function thumbHTML(it, cls) {
+  const k = KIND[it.kind], ph = it.photos && it.photos[0];
+  return ph ? '<span class="mph ' + (cls || '') + '" style="' + bg(ph) + '"></span>' : '<span class="mph tint ' + (cls || '') + '" style="--k:' + k.hex + '">' + icon(k.glyph, 22) + '</span>';
+}
 function replies(id) { const n = commentsFor(id).length; return n === 0 ? 'No replies yet' : n === 1 ? '1 reply' : n + ' replies'; }
 /* List views for each lens, from the same data as the map */
 
@@ -2151,10 +2203,12 @@ function itemCard(it, opts) {
   opts = opts || {};
   const title = it.kind === 'place' ? it.name : it.title;
   const right = it.kind === 'event' ? fmtDay(it.start) : it.kind === 'deal' ? fmtTill(it.till) : it.at ? fmtDate(it.at) + ', ' + fmtTime(it.at) : '';
-  let h = '<button type="button" class="card press" data-act="open" data-id="' + it.id + '">'
+  const th = THUMB_KINDS[it.kind];
+  let h = '<button type="button" class="card press' + (th ? ' thumbed' : '') + '" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">'
+    + (th ? '<div class="c-head">' + thumbHTML(it, 'c-thumb') + '<div class="c-hx">' : '')
     + '<div class="c-top"><span class="road">' + esc(it.road) + '</span><span class="date">' + esc(right) + '</span></div>'
-    + '<div class="c-title">' + esc(title) + '</div>';
-  if (it.photos && it.photos[0]) h += '<div class="c-photo" style="' + bg(it.photos[0]) + '"></div>';
+    + '<div class="c-title">' + esc(title) + '</div>' + (th ? '</div></div>' : '');
+  if (!th && it.photos && it.photos[0]) h += '<div class="c-photo" style="' + bg(it.photos[0]) + '"></div>';
   if (it.kind === 'problem') h += railHTML(it);
   else if (it.kind === 'event') h += '<div class="c-line">' + icon('gather', 16) + fmtRange(it.start, it.end) + '</div><div class="c-line">' + icon('checkcircle', 16) + it.interestedN + ' interested</div>';
   else if (it.kind === 'deal') h += '<div class="c-line">' + icon('clock', 16) + fmtTill(it.till, true) + '</div>';
@@ -2201,7 +2255,8 @@ function rowHTML(it, nested) {
   else if (it.kind === 'notice') meta = icon('clock', 16) + fmtRange(it.start, it.end);
   else if (it.kind === 'ask') meta = icon('bubble', 16) + replies(it.id);
   const road = it.kind === 'place' ? it.type + ', ' + it.road : it.road;
-  return '<button type="button" class="row press' + (nested ? ' nested' : '') + '" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + (nested ? '' : '<span class="rdisc" style="background:' + k.hex + '">' + icon(k.glyph, 20) + '</span>')
+  const lead = THUMB_KINDS[it.kind] ? thumbHTML(it, 'r-thumb') : nested ? '' : '<span class="rdisc" style="background:' + k.hex + '">' + icon(k.glyph, 20) + '</span>';
+  return '<button type="button" class="row press' + (nested ? ' nested' : '') + '" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + lead
     + '<span class="rtx">' + (nested ? '<span class="rkind">' + k.name + '</span>' : '<span class="rroad">' + esc(road) + ', ' + fmtDist(it.dist) + '</span>') + '<span class="rti">' + esc(it.kind === 'place' ? it.name : it.title) + '</span>' + (meta ? '<span class="rme">' + meta + '</span>' : '') + '</span>' + (nested ? icon('chevR', 18) : '') + '</button>';
 }
 function aroundList() {
@@ -2230,6 +2285,7 @@ function fixList() {
   const items = lensItems('fix');
   let h = listHead(items.length + ' ' + (items.length === 1 ? 'pin' : 'pins'), 'within 1.5 km');
   if (isOutside()) { h += '<p class="plainline">Fixes are tracked in Bandra West only, for now.</p>'; if (!items.length) return h; }
+  else h += wardLine('lwardline');
   const hidden = ITEMS.concat(S.mine).filter((x) => x.kind === 'problem' && S.flagged[x.id] && near(x));
   hidden.forEach((x) => { h += '<button type="button" class="hiddenrow press" data-act="unflag" data-id="' + x.id + '"><b>Pin hidden.</b><span>We are reviewing it. Tap to undo.</span></button>'; });
   if (S.offline) h += offlineBlock();
@@ -2257,7 +2313,7 @@ function discoverList() {
   if (!list.length) return h + emptyState(DISC.tab === 'event' ? 'No events within 1.5 km' : 'No deals within 1.5 km', 'Try all of Bandra West.', 'disc-all', 'Show all of Bandra West');
   h += '<div class="drows">' + list.map((it) => {
     const pl = placeById(it.placeId);
-    return '<button type="button" class="drow press" data-act="open" data-id="' + it.id + '"><span class="dph" style="' + bg(it.photos[0]) + (it.photos[0] ? '' : ';background-color:' + KIND[it.kind].hex) + '">' + (it.photos[0] ? '' : icon(KIND[it.kind].glyph, 24)) + '</span><span class="dtx"><span class="dpl">' + esc(pl ? pl.name : it.road) + (it.sponsored ? '<em>Sponsored</em>' : '') + '</span><span class="dti">' + esc(it.title) + '</span><span class="dme">' + icon(it.kind === 'event' ? 'gather' : 'clock', 16) + '<span>' + esc(it.kind === 'event' ? fmtWhen(it.start) : fmtTill(it.till, true)) + '</span><i>' + fmtDist(it.dist) + '</i></span></span></button>';
+    return '<button type="button" class="drow press" data-act="open" data-id="' + it.id + '">' + thumbHTML(it, 'd-thumb') + '<span class="dtx"><span class="dpl">' + esc(pl ? pl.name : it.road) + (it.sponsored ? '<em>Sponsored</em>' : '') + '</span><span class="dti">' + esc(it.title) + '</span><span class="dme">' + icon(it.kind === 'event' ? 'gather' : 'clock', 16) + '<span>' + esc(it.kind === 'event' ? fmtWhen(it.start) : fmtTill(it.till, true)) + '</span><i>' + fmtDist(it.dist) + '</i></span></span></button>';
   }).join('') + '</div>';
   return h;
 }
@@ -2336,7 +2392,7 @@ function problemPage(it) {
   const hero = it.photos && it.photos[0] ? '<div class="hero" style="' + bg(it.photos[0]) + '"></div>' + (it.photos.length > 1 ? '<div class="thumbs">' + it.photos.map((p) => '<span style="' + bg(p) + '"></span>').join('') + '</div>' : '') : '<div class="hero tint" style="--k:' + KIND.problem.hex + '"></div>';
   let h = '<div class="scroll">' + headBar('', it, { over: true }) + hero
     + '<div class="dbody"><div class="dtop"><span class="t-meta">' + esc(it.road) + '</span><span class="t-meta">' + fmtDate(it.at) + ', ' + fmtTime(it.at) + '</span></div>'
-    + '<h1 class="dtitle">' + esc(it.title) + '</h1>' + (it.body ? '<p class="dtext">' + esc(it.body) + '</p>' : '') + railHTML(it) + (it.outside ? '<div class="dline muted">' + icon('info', 18) + 'Fixes are tracked in Bandra West only, for now.</div>' : '')
+    + '<h1 class="dtitle">' + esc(it.title) + '</h1>' + (it.body ? '<p class="dtext">' + esc(it.body) + '</p>' : '') + (it.outside ? '' : wardLine('dwardline')) + railHTML(it) + (it.outside ? '<div class="dline muted">' + icon('info', 18) + 'Fixes are tracked in Bandra West only, for now.</div>' : '')
     + mapCard(it, it.road.split(',').slice(1).join(',').trim() || it.road) + commentsBlock(it, { placeholder: 'Show how it looks now' }) + '</div></div>';
   h += '<div class="abar">' + (it.outside ? '<span class="grow"></span>' : fixed ? '<button type="button" class="vbtn press' + (youV ? ' on' : '') + '" data-act="verify" data-id="' + it.id + '" aria-pressed="' + youV + '">' + icon('checkcircle', 18) + (youV ? 'Verified' : 'Verify') + '</button><span class="t-meta">' + it.verifiedN + ' verified</span>' : '<span class="t-meta grow">' + (w.state === 'none' ? 'Verify opens once the ward says it is fixed' : 'Verify opens once the ward says it is fixed') + '</span>')
     + '<span class="grow"></span><button type="button" class="pillbtn press' + (youH ? ' on' : '') + '" data-act="heart" data-id="' + it.id + '" aria-pressed="' + youH + '" aria-label="Same here">' + icon('heart', 18) + it.heartsN + '</button><button type="button" class="pillbtn press" data-act="to-comments" aria-label="Comments">' + icon('bubble', 18) + commentsFor(it.id).length + '</button></div>';
@@ -2467,6 +2523,7 @@ const ACT = {
   radius: () => toggleRadius(),
   locate: () => { const c = S.lens === 'buzz' ? buzzCentre() : centre(); closePeek(); map.flyTo([c.lat, c.lng], 15, { duration: .6 }); },
   'cards-toggle': () => toggleCards(),
+  'wardline-x': () => { FIXLINE.on = false; const l = $('#mapui .mapwardline'); if (l) l.remove(); layoutLabels(); },
   'zoom-in': () => map.zoomIn(1),
   'see-around': () => setLens('around'),
   'close-peek': () => closePeek(),
@@ -2653,7 +2710,7 @@ function renderPost() {
       + '<div class="pacts"><button type="button" class="btn quiet press" style="flex:1" data-p="back">Back</button><button type="button" class="btn primary press" style="flex:2" data-p="' + (isPlace ? 'add-place' : 'use-spot') + '" data-spotok>' + (isPlace ? 'Add this place' : 'Use this spot') + '</button></div>';
   } else if (s === 'fwhat') {
     h = phead('What is it?') + '<div class="where">' + icon('pin', 16) + esc(P.spot.road || 'Unnamed spot') + '</div><div class="tiles3 cats">' + CATS.map((c) => '<button type="button" class="tile sm press' + (P.cat === c[0] ? ' on' : '') + '" data-p="cat" data-c="' + c[0] + '" aria-pressed="' + (P.cat === c[0]) + '">' + icon(c[1], 22) + '<span>' + c[0] + '</span></button>').join('') + '</div>'
-      + textBox('fix') + photoRow()
+      + wardLine('pwardline') + textBox('fix') + photoRow()
       + postBtn(postBlocker());
   } else if (s === 'awrite') {
     h = phead('Post an ask') + '<div class="where">' + icon('pin', 16) + esc(P.spot.road || 'Unnamed spot') + '</div>' + textBox('ask') + addPhotoBtn()
@@ -3102,7 +3159,9 @@ function emptySearchHTML() {
 function resultRow(it) {
   const isPl = it.kind === 'place';
   const sub = isPl ? it.type + ', ' + it.road : KIND[it.kind].name + ', ' + (it.road || '').split(',')[0];
-  return '<button type="button" class="srow press" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '"><span class="smain">' + esc(isPl ? it.name : it.title) + '</span><span class="ssub">' + esc(sub) + '<i>' + fmtDist(it.dist != null ? it.dist : distM(centre(), it)) + '</i></span></button>';
+  const txt = '<span class="smain">' + esc(isPl ? it.name : it.title) + '</span><span class="ssub">' + esc(sub) + '<i>' + fmtDist(it.dist != null ? it.dist : distM(centre(), it)) + '</i></span>';
+  if (THUMB_KINDS[it.kind]) return '<button type="button" class="srow srow-t press" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + thumbHTML(it, 's-thumb') + '<span class="stx2">' + txt + '</span></button>';
+  return '<button type="button" class="srow press" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + txt + '</button>';
 }
 
 /* Suggestions: up to 6, mixed kinds, the matched part in regular weight and the rest lighter */
@@ -3329,13 +3388,17 @@ function openLocation() {
     wireLocMain(L, box);
   };
   L.render();
+  // when location is allowed, refresh where the phone is so "Switch to your current location" is right
+  geoPermission().then((st) => { if (st !== 'granted') return; getGPS(4000).then((p) => gpsPlace(p)).then(() => { renderMast(); if (L.el.isConnected && !L.data.q.trim()) L.render(); }).catch(() => {}); });
   return L;
 }
 function locMainHTML(edit) {
   const a = area(), saved = curIsSaved(), c = centre();
-  let h = '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lhead2"><span>Your location</span>' + (!saved && !edit ? '<button type="button" class="lnk2 press" data-l="save-cur">Save</button>' : '') + '</div>'
-    + '<div class="lcard"><div class="lrow cur"><span class="puck on">' + icon('target', 18) + '</span><span class="grow"><b>' + esc(a.name) + '</b><span>' + esc(a.sub || '') + '</span><em>1.5 km around here' + (a.src === 'gps' ? ', from your phone' : '') + '</em></span></div>'
-    + (a.src !== 'gps' ? '<button type="button" class="lrow press" data-l="gps"' + (edit ? ' tabindex="-1"' : '') + '><span class="puck">' + icon('target', 18) + '</span><span class="grow"><b>Use my current location</b><span>' + (GEO.state === 'denied' ? 'Location access is off' : 'From your phone’s location') + '</span></span>' + icon('chevR', 18) + '</button>' : '') + '</div></div>';
+  const far = GEO.pos && GEO.place && a.src !== 'gps' && distM(GEO.pos, a) > 300;
+  let h = far ? '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lcard"><button type="button" class="lrow press" data-l="switch-here"><span class="puck on">' + icon('target', 18) + '</span><span class="grow"><b>Switch to your current location</b><span>' + esc(GEO.place.name + (GEO.place.sub ? ', ' + GEO.place.sub : '')) + '</span></span>' + icon('chevR', 18) + '</button></div></div>' : '';
+  h += '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lhead2"><span>Your location</span>' + (!saved && !edit ? '<button type="button" class="lnk2 press" data-l="save-cur">Save</button>' : '') + '</div>'
+    + '<div class="lcard"><div class="lrow cur"><span class="puck' + (far ? '' : ' on') + '">' + icon('target', 18) + '</span><span class="grow"><b>' + esc(a.name) + '</b><span>' + esc(a.sub || '') + '</span><em>1.5 km around here' + (a.src === 'gps' ? ', from your phone' : '') + '</em></span></div>'
+    + (a.src !== 'gps' && !far ? '<button type="button" class="lrow press" data-l="gps"' + (edit ? ' tabindex="-1"' : '') + '><span class="puck">' + icon('target', 18) + '</span><span class="grow"><b>Use my current location</b><span>' + (GEO.state === 'denied' ? 'Location access is off' : 'From your phone’s location') + '</span></span>' + icon('chevR', 18) + '</button>' : '') + '</div></div>';
   if (S.locs.length) {
     h += '<div class="lsec"><div class="lhead2"><span>Saved locations</span><button type="button" class="lnk2 press" data-l="edit" aria-pressed="' + edit + '">' + (edit ? 'Done' : 'Edit') + '</button></div>' + (edit ? '<p class="lhint">Tap one to rename it or remove it.</p>' : '')
       + '<div class="lcard">' + S.locs.map((l) => {
@@ -3357,6 +3420,7 @@ function wireLocMain(L, box) {
     if (k === 'edit-one') { openSaveLoc(savedLoc(b.dataset.id), { editId: b.dataset.id }); return; }
     if (k === 'use') { const l = savedLoc(b.dataset.id); useSaved(l); back().then(() => toast('Showing ' + locLabelOf(l))); return; }
     if (k === 'save-cur') { const a = area(); openSaveLoc({ name: a.name, sub: a.sub, lat: a.lat, lng: a.lng }, { fromCurrent: true }); return; }
+    if (k === 'switch-here') { S.wantGps = true; setCurrent(Object.assign({}, GEO.place, { src: 'gps', lat: GEO.pos.lat, lng: GEO.pos.lng })); back().then(() => toast('Showing where you are')); return; }
     if (k === 'gps') { useGPS().then((ok) => { if (ok) back().then(() => toast('Showing where you are')); }); return; }
     if (k === 'add') { openAddLoc(); return; }
     if (k === 'area') { setArea(b.dataset.id); back().then(() => toast('Showing ' + area().name)); }
@@ -3459,7 +3523,7 @@ function removeSavedLoc(id) {
 }
 
 /* ---------- Current location (GPS) ---------- */
-const GEO = { state: 'unknown' };
+const GEO = { state: 'unknown', pos: null, place: null }; // pos and place: where the phone is, when the browser allows it
 function geoPermission() {
   try { if (navigator.permissions && navigator.permissions.query) return navigator.permissions.query({ name: 'geolocation' }).then((r) => (GEO.state = r.state)).catch(() => GEO.state); } catch (e) {}
   return Promise.resolve(GEO.state);
@@ -3467,11 +3531,12 @@ function geoPermission() {
 function getGPS(timeout) {
   return new Promise((res, rej) => {
     if (!navigator.geolocation) { rej({ code: 2 }); return; }
-    navigator.geolocation.getCurrentPosition((pos) => { GEO.state = 'granted'; res({ lat: pos.coords.latitude, lng: pos.coords.longitude }); }, (e) => { if (e && e.code === 1) GEO.state = 'denied'; rej(e || { code: 2 }); }, { enableHighAccuracy: true, timeout: timeout || 9000, maximumAge: 60000 });
+    navigator.geolocation.getCurrentPosition((pos) => { GEO.state = 'granted'; GEO.pos = { lat: pos.coords.latitude, lng: pos.coords.longitude }; res(GEO.pos); }, (e) => { if (e && e.code === 1) { GEO.state = 'denied'; GEO.pos = null; GEO.place = null; } rej(e || { code: 2 }); }, { enableHighAccuracy: true, timeout: timeout || 9000, maximumAge: 60000 });
   });
 }
 // Name a GPS point: the nearest locality in Bandra West, else a reverse lookup, else "Your location"
-function gpsPlace(p) {
+function gpsPlace(p) { return gpsPlace0(p).then((g) => { if (GEO.pos && distM(GEO.pos, p) < 5) GEO.place = g; return g; }); }
+function gpsPlace0(p) {
   if (inBandraWest(p)) { const a = nearestArea(p); return Promise.resolve({ src: 'gps', name: a.name, sub: 'Bandra West', lat: p.lat, lng: p.lng }); }
   const base = { src: 'gps', name: 'Your location', sub: 'Outside Bandra West', lat: p.lat, lng: p.lng };
   return Promise.race([reverseName(p), new Promise((r) => setTimeout(() => r(null), 2500))]).then((r) => (r ? Object.assign(base, { name: r.name, sub: r.sub || 'Outside Bandra West' }) : base));
@@ -3525,7 +3590,11 @@ function openingSplash() {
   };
   if (!S.wantGps) {
     // a picked or saved location: no prompt, but say so when the phone's location is off for this page
-    geoPermission().then((st) => done(st === 'denied' || st === 'prompt'));
+    geoPermission().then((st) => {
+      if (st !== 'granted') { done(st === 'denied' || st === 'prompt'); return; }
+      // allowed: learn where the phone is (no prompt), so the masthead can say how far the chosen location is
+      Promise.race([getGPS(3000), new Promise((r, j) => setTimeout(() => j({ code: 3 }), 3000))]).then((p) => gpsPlace(p)).then(() => done(false)).catch(() => done(false));
+    });
     return;
   }
   Promise.race([getGPS(3000), new Promise((r, j) => setTimeout(() => j({ code: 3 }), 3000))])
@@ -3782,6 +3851,16 @@ function openCredits() {
 /* ---- 99-main.js ---- */
 /* Start */
 function boot() {
+  // Fresh start link for testers: ?fresh clears this phone's test data, starts at the first onboarding screen,
+  // and comes off the address bar so a reload doesn't reset again
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has('fresh')) {
+      try { localStorage.removeItem(LS_KEY); sessionStorage.clear(); } catch (e) {}
+      u.searchParams.delete('fresh');
+      history.replaceState(history.state, '', u.pathname + (u.searchParams.toString() ? '?' + u.searchParams : '') + u.hash);
+    }
+  } catch (e) {}
   load();
   if (!window.L) {
     document.getElementById('app').innerHTML = '<div class="sysbody"><h1 class="t-h1">The map could not load.</h1><p class="t-body muted">Check the connection and reload the page.</p></div>';
@@ -3813,7 +3892,7 @@ window.__ptp = {
   firstMarkerId: () => { const r = MK.find((m) => !m.cluster); return r && r.id; },
   tapMarker: (id) => { const r = MK.find((m) => m.id === id); if (r) r.marker.fire('click'); else { const it = anyById(id); if (it) onMarkerTap(withDist([it])[0]); } },
   places: () => allPlaces(), items: () => ITEMS.concat(S.mine), comments: (id) => commentsFor(id),
-  setArea: (id) => setArea(id), cardIds: (l) => cardItems(l).map((x) => x.id), tag: (id) => tagText(anyById(id)), rows: () => lensItems('around').map((x) => ({ id: x.id, kind: x.kind })), cur: () => area(), locs: () => S.locs, radius: () => radiusOn(),
+  setArea: (id) => setArea(id), cardIds: (l) => cardItems(l).map((x) => x.id), tag: (id) => tagText(anyById(id)), rows: () => lensItems('around').map((x) => ({ id: x.id, kind: x.kind })), cur: () => area(), geo: () => ({ state: GEO.state, pos: GEO.pos, place: GEO.place }), locs: () => S.locs, radius: () => radiusOn(),
   topId: () => { const t = topLayer(); return t && t.data && t.data.id; },
 };
 
