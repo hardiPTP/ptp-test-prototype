@@ -2,7 +2,7 @@
 
 Every photo in `index.html` is inlined as WebP (resized to 820 px wide, quality 66) from the files below. Each was found on Wikimedia Commons (search results and category pages), and its licence and author were read from the file page itself. No URL was guessed: the thumbnail URLs are the standard 960 px Commons thumbnails of the original file named on that page.
 
-The four onboarding pictures (`onb1` to `onb4`) are the 3D renders on Figma `PTP · Final v3`, section 00 (nodes 6059:18997, 6059:19040, 6059:19083, 6059:19126), exported with get_screenshot.
+The four onboarding pictures are live three.js scenes (round 8), built for Push The Pin in `/home/claude/onb3d` (`vendor/onb3d.js`). three.js 0.160.0 (MIT) loads from cdn.jsdelivr.net only on the intro screens. The four still renders shown when WebGL is off (`assets/onb3d/scene0.webp` to `scene3.webp`) are frames of those same scenes. The splash logo is the Final v3 launch frame's "PTP 3d Pin with Gabarito" (node 6066:35486), read with get_design_context and inlined as SVG (`tools/logo.py`).
 
 Map: OpenFreeMap (positron style) © OpenMapTiles, data © OpenStreetMap contributors (ODbL). If OpenFreeMap cannot load, the standard OpenStreetMap tiles are used.
 
