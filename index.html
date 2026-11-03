@@ -3235,7 +3235,7 @@ function markerSize(kind, sel) { return sel ? 48 : 38; } // 38 px discs, 48 px s
 /* Round 12: illustrated markers. Default: a pale tint of the kind colour (20% into #FBF8F4), 2 px white ring, the object at 24 px.
    (The tint is 38% since the round 12 feedback.) Selected: the full kind colour, 3 px ring, the halo, the object with its light rim. The objects are CSS rules made by tools/build.py. */
 // user feedback in round 12: the 20% tints camouflaged into the sand map, so the default disc is 38% kind colour into #FBF8F4
-const KIND_TINT = { problem: '#F2B6A2', event: '#C4B5DD', deal: '#E0ACC1', place: '#A4C7C1', notice: '#E1C89B', ask: '#EBB8CC' };
+const KIND_TINT = { problem: '#F2B6A2', event: '#C4B5DD', deal: '#E0ACC1', place: '#A4C7C1', notice: '#DCBF8B', ask: '#EBB8CC' }; // notice alone at 45%: at 38% its tan board still blended into the sand
 function discHTML(it, opt) {
   opt = opt || {};
   const k = KIND[it.kind], sel = !!opt.selected;
