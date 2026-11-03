@@ -3143,7 +3143,7 @@ function syncChrome() {
 let map = null, tiles = null, usingOSM = false;
 let markerLayer = null, circleLayer = null, youLayer = null;
 let MK = []; // current marker records {id, el, marker, item}
-let mapItems = [], mapMode = 'buzz', MAP_MOVING = false;
+let mapItems = [], mapMode = 'buzz', MAP_MOVING = false, LAYOUT_PENDING = false, CAR_BUSY = false; // the last two: test idle hooks
 const OFM_STYLE = 'https://tiles.openfreemap.org/styles/liberty'; // only if the inlined style is missing
 const DEFAULT_Z = 15.5, MIN_FRAME_Z = 14.5; // round 12: open at 15.5, zoom out to 14.5 at most to show 3 items
 // The inlined sprite answers MapLibre's sprite requests from data URLs, so nothing is fetched from a relative path on GitHub Pages
@@ -3295,7 +3295,7 @@ function renderMarkers() {
       MK.push({ cluster: true, marker: m, items: g.map((o) => o.it), top, key });
     }
   });
-  requestAnimationFrame(layoutLabels);
+  LAYOUT_PENDING = true; requestAnimationFrame(layoutLabels);
   drawCircle();
 }
 /* Round 12: every marker and cluster has its tag at every zoom. Tags try the right, the left, above and below their marker and are
@@ -3305,7 +3305,7 @@ function renderMarkers() {
 let hiddenLabels = 0, LABEL_BOXES = [];
 const TAG_GAP = 10.5, TAG_GAP_V = 10.5; // the tail's tip sits about 5 px from the marker on every side
 function layoutLabels() {
-  hiddenLabels = 0;
+  hiddenLabels = 0; LAYOUT_PENDING = false;
   const recs = MK.map((r) => { const el = r.marker.getElement(); const lb = el && el.querySelector('.mk-lbl'); const d = el && el.querySelector('.mk-disc,.mk-cluster,.mk-far'); return { r, el, lb, d, it: r.cluster ? r.top : r.item }; }).filter((x) => x.el && x.d);
   // writes: reset every tag to its first spot
   recs.forEach((x) => { if (x.lb) { x.lb.classList.remove('hid', 'left', 'up', 'down'); x.lb.classList.add('right'); x.lb.style.setProperty('--dx', '0px'); } });
@@ -3347,7 +3347,7 @@ function layoutLabels() {
   updateHint();
 }
 // The zoom hint (round 12) shows only when at least one tag was dropped, for about 2 s when the map opens and after each zoom
-let hintTimer = 0, hintOn = false;
+let hintTimer = 0, hintOn = false, LAST_HINT = null; // LAST_HINT: what the last flash decided (test hook)
 function hintText() {
   const z = map.getZoom();
   return hiddenLabels > 0 && z < map.getMaxZoom() - 0.01 ? 'Zoom in for more names' : '';
@@ -3358,7 +3358,7 @@ function flashHint() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const h = $('#mapui .pill-hint'); if (!h || !map) return;
     if (SBAR) { h.classList.add('hide'); hintOn = false; return; } // round 11 (P12): never over the search bar's results
-    const t = hintText(); if (!t) { h.classList.add('hide'); hintOn = false; return; }
+    const t = hintText(); LAST_HINT = { text: t, dropped: hiddenLabels }; if (!t) { h.classList.add('hide'); hintOn = false; return; }
     h.textContent = t; h.classList.remove('hide'); hintOn = true; layoutLabels(); // tags under the hint move or hide
     hintTimer = setTimeout(() => { hintOn = false; const x = $('#mapui .pill-hint'); if (x) x.classList.add('hide'); setTimeout(layoutLabels, 380); }, 2000);
   }));
@@ -3704,7 +3704,7 @@ window.addEventListener('pointerup', () => {
   scrollCarouselTo(clamp(idx, 0, $$('#mapui .mcard').length - 1));
 });
 function wireCarousel(car, items) {
-  car.addEventListener('scroll', () => { clearTimeout(carTimer); carTimer = setTimeout(() => onCarouselSettle(car, items), 110); }, { passive: true });
+  car.addEventListener('scroll', () => { CAR_BUSY = true; clearTimeout(carTimer); carTimer = setTimeout(() => { CAR_BUSY = false; onCarouselSettle(car, items); }, 110); }, { passive: true });
   car.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') return; CAR.down = { x: e.clientX, s: car.scrollLeft }; CAR.moved = false; CAR.car = car; CAR.n = items.length; car.classList.add('drag'); });
   car.addEventListener('click', (e) => { if (CAR.moved) { e.stopPropagation(); e.preventDefault(); CAR.moved = false; } }, true);
   car.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') scrollCarouselTo(S.buzzIndex + 1); if (e.key === 'ArrowLeft') scrollCarouselTo(S.buzzIndex - 1); });
@@ -3713,6 +3713,7 @@ function scrollCarouselTo(i, instant) {
   const car = $('#mapui .carousel'); if (!car) return;
   const cards = $$('.mcard', car); i = clamp(i, 0, cards.length - 1);
   const c = cards[i]; if (!c) return; const left = c.offsetLeft - (car.clientWidth - c.offsetWidth) / 2;
+  if (!instant && Math.abs(car.scrollLeft - left) > 1) { CAR_BUSY = true; setTimeout(() => { if (CAR_BUSY && !car.isConnected) CAR_BUSY = false; }, 1500); }
   car.scrollTo({ left, behavior: instant ? 'auto' : 'smooth' });
   if (instant) S.buzzIndex = i;
 }
@@ -5919,12 +5920,12 @@ window.__ptp = {
   alerts: () => alertList().map((a) => ({ id: a.id, text: a.text, at: a.at })), samples: () => SAMPLES_ON,
   rank: (id) => { const it = withDist([anyById(id)], buzzCentre())[0]; return { score: rankScore(it), time: timeliness(it) }; },
   // round 12 test hooks. idle: the app has nothing in motion (the map, CSS transitions and animations that end)
-  idle: () => !MAP_MOVING && !(map && map._panAnim && map._panAnim._inProgress) && !(document.getAnimations ? document.getAnimations() : []).some((a) => a.playState === 'running' && isFinite(a.effect && a.effect.getComputedTiming().endTime)),
+  idle: () => !MAP_MOVING && !LAYOUT_PENDING && !CAR_BUSY && !(map && map._panAnim && map._panAnim._inProgress) && !(document.getAnimations ? document.getAnimations() : []).some((a) => a.playState === 'running' && isFinite(a.effect && a.effect.getComputedTiming().endTime)),
   ready: () => !!map && !document.getElementById('splash'),
   labels: () => LABEL_BOXES, hidden: () => hiddenLabels, styleName: () => { const g = tiles && tiles.getMaplibreMap && tiles.getMaplibreMap(); return g && g.getStyle ? (g.getStyle() || {}).name : (usingOSM ? 'osm' : null); },
   glReady: () => { const g = tiles && tiles.getMaplibreMap && tiles.getMaplibreMap(); return !!(g && g.loaded && g.loaded() && g.isStyleLoaded && g.isStyleLoaded()); },
   poisNear: (m) => { const g = POI.gl; if (!g) return null; const out = []; g.queryRenderedFeatures({ layers: POI.layers.filter((id) => g.getLayer(id)) }).forEach((f) => { const c = f.geometry.coordinates; const p = { lat: c[1], lng: c[0] }; const d = Math.min.apply(null, mapItems.filter(hasPoint).map((x) => distM(p, x))); out.push({ name: f.properties.name, d: Math.round(d) }); }); return out; },
-  usingOSM: () => usingOSM,
+  usingOSM: () => usingOSM, lastHint: () => LAST_HINT,
   spriteOk: () => { const g = POI.gl; return !!(g && g.hasImage && g.hasImage('circle_11')); },
   poiFilters: (on) => { if (on) { POI.key = ''; hidePoisNearPins(); } else { POI.layers.forEach((id) => { try { if (id in POI.base) POI.gl.setFilter(id, POI.base[id]); } catch (e) {} }); POI.key = 'off'; } },
   setZoom: (z) => map.setZoom(z, { animate: false }),
