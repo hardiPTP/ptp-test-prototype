@@ -905,6 +905,11 @@ input::placeholder{transition:color .22s}
 /* A: the Fix empty line */
 .lhead .fixnone{margin:0}
 .peek.fixnone{padding-bottom:16px}
+/* F: verify is locked for people who aren't near the pin: a quiet disabled button and one plain meta line */
+.abar .vlock{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.abar .vlock .btn{width:100%;flex:none}
+.abar .vlock .btn[disabled]{background:var(--well);color:var(--ink60);box-shadow:none;cursor:default}
+.abar .vlock .t-meta{text-align:center}
 
 </style>
 </head>
@@ -2812,11 +2817,11 @@ const S = {
   // persisted
   onboarded: false, signedIn: false, name: '', phone: '', areaId: null, located: false, gps: null,
   mine: [], myComments: {}, deletedComments: {}, flaggedComments: {}, verified: {}, interested: {}, hearts: {},
-  flagged: {}, recent: [], offline: false, places: [], savedAreas: [], ob: null, cur: null, locs: [], wantGps: false, waBuzz: false, paused: {}, alertsRead: {}, alertsSeen: {},
+  flagged: {}, recent: [], offline: false, places: [], savedAreas: [], ob: null, cur: null, locs: [], wantGps: false, waBuzz: false, paused: {}, alertsRead: {}, alertsSeen: {}, scope: 'near',
   // session only
   lens: 'buzz', view: 'map', selected: null, buzzIndex: 0,
 };
-const PERSIST = ['onboarded', 'signedIn', 'name', 'phone', 'areaId', 'located', 'gps', 'mine', 'myComments', 'deletedComments', 'flaggedComments', 'verified', 'interested', 'hearts', 'flagged', 'recent', 'offline', 'places', 'savedAreas', 'ob', 'cur', 'locs', 'wantGps', 'waBuzz', 'paused', 'alertsRead', 'alertsSeen'];
+const PERSIST = ['onboarded', 'signedIn', 'name', 'phone', 'areaId', 'located', 'gps', 'mine', 'myComments', 'deletedComments', 'flaggedComments', 'verified', 'interested', 'hearts', 'flagged', 'recent', 'offline', 'places', 'savedAreas', 'ob', 'cur', 'locs', 'wantGps', 'waBuzz', 'paused', 'alertsRead', 'alertsSeen', 'scope'];
 function load() {
   try { const raw = localStorage.getItem(LS_KEY); if (!raw) return; const o = JSON.parse(raw); PERSIST.forEach((k) => { if (k in o) S[k] = o[k]; }); } catch (e) {}
   // Round 2 state had one area: it becomes the current and first saved location
@@ -2855,6 +2860,7 @@ function savedLoc(id) { return (S.locs || []).find((l) => l.id === id); }
 function setCurrent(o, opts) {
   S.cur = { src: o.src || 'place', id: o.id || null, name: o.name, sub: o.sub || '', lat: o.lat, lng: o.lng };
   S.areaId = null; S.selected = null; S.buzzIndex = 0; S.outsideNoted = false;
+  S.scope = 'near'; // F: picking any location goes back to 1.5 km around it
   save(); if (!(opts && opts.quiet)) renderHome({ fit: true });
 }
 function locLabelOf(l) { return l.label || l.name; }
@@ -2895,18 +2901,23 @@ function isLive(it) {
 function isPaused(it) { return !!(it && S.paused && S.paused[it.id]); }
 function visible(it) { return !S.flagged[it.id] && isLive(it) && !isPaused(it); }
 function searchable(it) { return !S.flagged[it.id] && isLive(it); }
-function near(it, c, r) { return distM(c || centre(), it) <= (r || RADIUS); }
+/* F, "Everywhere": S.scope 'all' drops the 1.5 km filter everywhere; the picked location stays the base for distances */
+function isAll() { return S.scope === 'all'; }
+function setScope(v) { S.scope = v === 'all' ? 'all' : 'near'; S.selected = null; S.buzzIndex = 0; save(); }
+// nearest first from the base; an item with no real point goes last
+function sortNear(list) { return list.sort((a, b) => { const x = distOf(a), y = distOf(b); return (x == null ? 1e12 : x) - (y == null ? 1e12 : y); }); }
+function near(it, c, r) { if (isAll() && !r) return true; return distM(c || centre(), it) <= (r || RADIUS); }
 function withDist(list, c) { c = c || centre(); return list.map((x) => Object.assign(x, { dist: distM(c, x) })); }
 
 function lensItems(lens) {
   const c = centre();
   let list = allItems().filter((it) => visible(it) && near(it, c));
   if (lens === 'buzz') return buzzItems();
-  if (lens === 'fix') return fixSort(withDist(list.filter((it) => it.kind === 'problem'), c));
+  if (lens === 'fix') return (isAll() ? sortNear : fixSort)(withDist(list.filter((it) => it.kind === 'problem'), c));
   if (lens === 'discover') return withDist(list.filter((it) => it.kind === 'event' || it.kind === 'deal'), c);
-  return rankMix(withDist(list, c));
+  return isAll() ? sortNear(withDist(list, c)) : rankMix(withDist(list, c));
 }
-function placesNear() { const c = centre(); return withDist(allPlaces().filter((p) => !S.flagged[p.id] && near(p, c)).map((p) => Object.assign({ kind: 'place' }, p)), c); }
+function placesNear() { const c = centre(); const l = withDist(allPlaces().filter((p) => !S.flagged[p.id] && near(p, c)).map((p) => Object.assign({ kind: "place" }, p)), c); return isAll() ? sortNear(l) : l; }
 
 /* One ordering rule for every mixed list (Around me, Buzz, search):
    1. score = timeliness x nearness (round 11, D1: your own posts are ranked like everything else, they no longer jump to the top),
@@ -2926,7 +2937,8 @@ function timeliness(it) {
   return .5;
 }
 function nearness(d) { return d <= 300 ? 1 : d <= 800 ? .7 : d <= 1500 ? .45 : .3; }
-function rankScore(it) { return timeliness(it) * nearness(it.dist != null ? it.dist : distM(centre(), it)); }
+// F: Everywhere ranks Buzz by timeliness only (nearness weight 1)
+function rankScore(it) { if (isAll()) return timeliness(it); return timeliness(it) * nearness(it.dist != null ? it.dist : distM(centre(), it)); }
 function isFreshMine(it) { return !!it.mine && Date.now() - tms(it.at) < 864e5; }
 function rankMix(list) {
   const rest = list.map((x) => ({ x, s: rankScore(x) }))
@@ -3254,7 +3266,7 @@ function flashHint() {
 /* Radius toggle (round 3): on by default in Around me, Fix and Discover, off in Buzz, remembered for the session */
 const RADIUS_ON = (() => { try { return JSON.parse(sessionStorage.getItem('ptp-radius')) || {}; } catch (e) { return {}; } })();
 function radiusKey() { return mapMode === 'search' ? 'search' : S.lens; }
-function radiusOn(k) { k = k || radiusKey(); return k in RADIUS_ON ? !!RADIUS_ON[k] : k !== 'buzz'; }
+function radiusOn(k) { if (isAll() && mapMode !== 'search') return false; k = k || radiusKey(); return k in RADIUS_ON ? !!RADIUS_ON[k] : k !== 'buzz'; }
 function toggleRadius() { const k = radiusKey(); RADIUS_ON[k] = !radiusOn(k); try { sessionStorage.setItem('ptp-radius', JSON.stringify(RADIUS_ON)); } catch (e) {} drawCircle(); const b = $('#mapui .radiusbtn'); if (b) { b.setAttribute('aria-pressed', radiusOn()); } }
 function radiusBtn(top) { return '<button type="button" class="radiusbtn press" style="top:' + top + 'px" data-act="radius" aria-label="Show the 1.5 km circle" aria-pressed="' + radiusOn() + '">' + icon('radius', 22) + '</button>'; }
 function drawCircle() {
@@ -3284,8 +3296,13 @@ function fitItems(items, opts) {
   opts = opts || {};
   items = items.filter(hasPoint);
   const c = opts.centre || (mapMode === 'buzz' ? buzzCentre() : centre());
-  const useCircle = opts.circle !== false && !((mapMode === 'buzz' || mapMode === 'search' || mapMode === 'sbar') && items.length);
+  const useCircle = opts.circle !== false && !((mapMode === 'buzz' || mapMode === 'search' || mapMode === 'sbar') && items.length) && !(isAll() && items.length);
   let b;
+  if (isAll() && items.length && mapMode !== 'sbar') { // F: Everywhere fits the bounds of all the points
+    b = L.latLngBounds(items.map((i) => [i.lat, i.lng]));
+    map.fitBounds(b, { paddingTopLeft: [24, mastH() + 70], paddingBottomRight: [24, (opts.bottom || 0) + 24], maxZoom: 16.5, animate: !opts.instant });
+    return;
+  }
   if (useCircle) b = L.latLng(c.lat, c.lng).toBounds(RADIUS * 2);
   else { // keep the area in the middle: mirror the items around the centre
     const dl = Math.max(...items.map((i) => Math.abs(i.lat - c.lat))) + 0.0015, dg = Math.max(...items.map((i) => Math.abs(i.lng - c.lng))) + 0.0015;
@@ -3347,10 +3364,13 @@ function whereLine(a) {
 // What the masthead names: Bandra West while Buzz shows Bandra's Buzz from outside; a custom saved name big, with its place below
 function mastPlace() {
   const a = area();
+  if (isAll()) return { name: 'Everywhere', sub: '', where: 'Distances from ' + baseName(), aria: 'Everywhere, distances from ' + baseName(), long: true };
   if (isOutside() && S.lens === 'buzz') return { name: 'Bandra West', sub: '', where: 'You are in ' + a.name, aria: 'Bandra West Buzz' };
   if (a.src === 'saved') { const l = savedLoc(a.id); if (l && l.label && l.label !== l.name && l.label !== 'Home' && l.label !== 'Work') { const h = hereLine(a); return { name: l.label, sub: '', where: l.name + (h ? ', ' + lowFirst(h) : l.sub ? ', ' + l.sub : ''), aria: l.label }; } }
   return { name: a.name, sub: a.sub || '', where: whereLine(a), aria: a.name };
 }
+// F: the picked location stays the base for distances while Everywhere is on
+function baseName() { const a = area(); if (a.src === 'saved') { const l = savedLoc(a.id); if (l) return locLabelOf(l); } return a.name; }
 function renderMast() {
   const a = mastPlace();
   const where = a.where, sub = a.sub || '';
@@ -3361,7 +3381,7 @@ function renderMast() {
     ? '<button type="button" class="vswitch press" data-act="toggle-view" aria-label="Show as a list">' + icon('list', 20) + '</button>'
     : '<button type="button" class="vswitch on press" data-act="toggle-view" aria-label="Show on the map">' + icon('map', 20) + '</button>';
   const inl = !sub || (a.name.length <= 9 && sub.length <= 12);
-  $('#mast').innerHTML = '<div class="status"></div><div class="mrow"><button type="button" class="area-btn press" data-act="change-location" aria-label="Change location, now ' + esc(a.aria) + '"><span class="l1"><span class="name' + (a.name.length > 13 ? ' long' : '') + '">' + esc(a.name) + '</span>' + (inl && sub ? '<span class="ward">' + esc(sub) + '</span>' : '') + icon('chevD', 18) + '</span><span class="l2">' + esc(inl || !sub ? where : sub + ', ' + (/^(You are here|Picked location|Your area)$/.test(where) ? where.toLowerCase() : where)) + '</span></button>' + sw + right + '</div>';
+  $('#mast').innerHTML = '<div class="status"></div><div class="mrow"><button type="button" class="area-btn press" data-act="change-location" aria-label="Change location, now ' + esc(a.aria) + '"><span class="l1"><span class="name' + (a.long || a.name.length > 13 ? ' long' : '') + '">' + esc(a.name) + '</span>' + (inl && sub ? '<span class="ward">' + esc(sub) + '</span>' : '') + icon('chevD', 18) + '</span><span class="l2">' + esc(inl || !sub ? where : sub + ', ' + (/^(You are here|Picked location|Your area)$/.test(where) ? where.toLowerCase() : where)) + '</span></button>' + sw + right + '</div>';
   document.documentElement.style.setProperty('--mast-h', $('#mast').offsetHeight + 'px');
 }
 
@@ -3421,6 +3441,7 @@ function cardItems(lens) {
   if (lens === 'buzz') return buzzItems();
   if (lens === 'fix') return lensItems('fix');
   const key = (it) => new Date(it.kind === 'event' ? it.start : it.till).getTime(); // Discover: soonest first
+  if (isAll()) return sortNear(lensItems('discover')); // F: Everywhere goes nearest first from the base
   return lensItems('discover').sort((a, b) => key(a) - key(b));
 }
 function pillText(lens, n) { return String(n); }
@@ -3437,7 +3458,7 @@ function renderMapUI(opts) {
   let html = '';
   html += '<div class="pill-hint hide" style="top:' + (top + (lens === 'fix' && (FIXLINE.on || outside) ? 64 : 54)) + 'px" aria-live="polite"></div>';
   html += '<div class="mapctl" style="top:' + (top + 58) + 'px"><button type="button" data-act="zoom-in" aria-label="Zoom in">' + icon('plus', 20) + '</button><button type="button" data-act="zoom-out" aria-label="Zoom out">' + icon('minus', 20) + '</button></div>';
-  html += radiusBtn(top + 162);
+  if (!isAll()) html += radiusBtn(top + 162); // F: no 1.5 km circle or its button in Everywhere
   html += '<button type="button" class="locate press" style="top:' + (top + 218) + 'px" data-act="locate" aria-label="Back to ' + esc(area().name) + '">' + icon('target', 20) + '</button>';
   if (S.offline) html += '<div class="offline-line" style="top:' + (top + 10) + 'px">' + icon('wifi-off', 18) + '<span class="grow">Phone offline. Showing what was saved.</span></div>';
   else if (outside && lens === 'fix') html += '<div class="offline-line" style="top:' + (top + 10) + 'px">' + icon('info', 18) + '<span class="grow">Fixes are tracked in Bandra West only, for now.</span></div>';
@@ -3543,7 +3564,7 @@ function cardWhen(it) {
 function cardWhere(it) { const pl = it.placeId && placeById(it.placeId); return (pl ? pl.name + (pl.road ? ', ' + pl.road : '') : (it.road || '')) + (hasPoint(it) ? '' : ', location approximate'); }
 // Buzz ends: a last card after item 12 (locked decision), not counted in the pill
 function buzzEndCard(n) {
-  return '<div class="mcard mend" data-idx="' + n + '" role="group" aria-label="End of Buzz"><div class="mendtx"><div class="mti">That\u2019s today\u2019s Buzz</div><div class="mdist">' + n + ' ' + (n === 1 ? 'thing' : 'things') + ' within 1.5 km</div></div><button type="button" class="seepin press" data-act="see-around">See everything around you</button></div>';
+  return '<div class="mcard mend" data-idx="' + n + '" role="group" aria-label="End of Buzz"><div class="mendtx"><div class="mti">That\u2019s today\u2019s Buzz</div><div class="mdist">' + n + ' ' + (n === 1 ? 'thing' : 'things') + (isAll() ? '' : ' within 1.5 km') + '</div></div><button type="button" class="seepin press" data-act="see-around">See everything around you</button></div>';
 }
 function lensCard(it, i, n) {
   const k = KIND[it.kind], ph = it.photos && it.photos[0];
@@ -3741,7 +3762,7 @@ function buzzList() {
   if (S.offline) h += offlineBlock();
   if (!items.length) return h + emptyState('Nothing new in Buzz today', 'Everything within 1.5 km is still there.', 'see-around', 'See everything around you');
   h += '<div class="cards">' + items.map((it) => itemCard(it)).join('') + '</div>';
-  h += '<div class="endcard"><div class="t-h2">That’s today’s Buzz</div><div class="t-meta">' + items.length + ' things within 1.5 km</div><button type="button" class="rowbtn press" data-act="see-around">' + icon('target', 20) + '<span class="grow">See everything around you</span>' + icon('chevR', 18) + '</button></div>';
+  h += '<div class="endcard"><div class="t-h2">That’s today’s Buzz</div><div class="t-meta">' + items.length + ' things' + (isAll() ? '' : ' within 1.5 km') + '</div><button type="button" class="rowbtn press" data-act="see-around">' + icon('target', 20) + '<span class="grow">See everything around you</span>' + icon('chevR', 18) + '</button></div>';
   return h;
 }
 
@@ -3766,7 +3787,7 @@ function aroundList() {
   // events and deals tied to a place sit inside that place's group, which takes the place of its best item in the order
   const byPlace = {}; items.forEach((it) => { if (it.placeId && places.find((p) => p.id === it.placeId)) (byPlace[it.placeId] = byPlace[it.placeId] || []).push(it); });
   const total = items.length + places.length;
-  let h = '<div class="ahead t-label">Around ' + esc(area().name) + ', 1.5 km, ' + total + ' things</div>';
+  let h = '<div class="ahead t-label">' + (isAll() ? 'Everywhere, nearest ' + esc(baseName()) + ' first, ' : 'Around ' + esc(area().name) + ', 1.5 km, ') + total + ' things</div>';
   if (S.offline) h += offlineBlock();
   if (!items.length) return h + emptyState('Nothing within 1.5 km yet', isOutside() ? 'Pick a location in Bandra West to see what is on there.' : 'Pick another area to see more of Bandra West.', 'change-location', 'Change location');
   const done = {};
@@ -3787,7 +3808,7 @@ function aroundList() {
 function fixList() {
   const items = lensItems('fix');
   // Round 11: with no pins, one plain line; the nav plus is the action
-  let h = items.length ? listHead(items.length + ' ' + (items.length === 1 ? 'pin' : 'pins'), 'within 1.5 km') : '<div class="lhead"><div class="t-h2 fixnone">No problems posted near you yet</div></div>';
+  let h = items.length ? listHead(items.length + ' ' + (items.length === 1 ? 'pin' : 'pins'), isAll() ? 'everywhere, nearest first' : 'within 1.5 km') : '<div class="lhead"><div class="t-h2 fixnone">No problems posted near you yet</div></div>';
   if (isOutside()) { h += '<p class="plainline">Fixes are tracked in Bandra West only, for now.</p>'; if (!items.length) return h; }
   else h += wardLine('lwardline');
   const hidden = ITEMS.concat(S.mine).filter((x) => x.kind === 'problem' && S.flagged[x.id] && near(x));
@@ -3804,14 +3825,14 @@ function discoverList() {
   const c = centre();
   let list = withDist(all.filter((it) => it.kind === DISC.tab && (DISC.where === 'all' || near(it, c))), c);
   const key = (it) => new Date(it.kind === 'event' ? it.start : it.till).getTime();
-  list.sort((a, b) => key(a) - key(b));
+  if (isAll()) sortNear(list); else list.sort((a, b) => key(a) - key(b)); // F: Everywhere goes nearest first
   const featured = withDist(all.filter((it) => it.sponsored && near(it, c)), c);
   let h = '';
   if (featured.length) {
     h += '<div class="fhead"><span class="t-h3">Featured</span><span class="t-meta">Sponsored</span></div><div class="featured">' + featured.map((it) => '<button type="button" class="fcard press" data-act="open" data-id="' + it.id + '"><span class="fph" style="' + bg(it.photos[0]) + '"></span><span class="fti">' + esc(it.title) + '</span><span class="fme"><span>' + esc(it.road.split(',')[0]) + '</span><b>' + esc(it.kind === 'event' ? whenOf(it) : fmtTill(it.till)) + '</b></span></button>').join('') + '</div>';
   }
   const noun = DISC.tab === 'event' ? (list.length === 1 ? 'event' : 'events') : (list.length === 1 ? 'deal' : 'deals');
-  h += '<div class="sorthead"><span class="t-h2">' + list.length + ' ' + noun + '</span><button type="button" class="sortbtn press" data-act="sort-menu" aria-haspopup="menu">' + (DISC.where === 'near' ? 'within 1.5 km' : 'all of Bandra West') + icon('chevD', 18) + '</button></div>';
+  h += '<div class="sorthead"><span class="t-h2">' + list.length + ' ' + noun + '</span><button type="button" class="sortbtn press" data-act="sort-menu" aria-haspopup="menu">' + (isAll() ? 'everywhere' : DISC.where === 'near' ? 'within 1.5 km' : 'all of Bandra West') + icon('chevD', 18) + '</button></div>';
   h += '<div class="seg2" role="tablist"><button type="button" role="tab" aria-selected="' + (DISC.tab === 'event') + '" class="' + (DISC.tab === 'event' ? 'on' : '') + '" data-act="disc-tab" data-tab="event">Events</button><button type="button" role="tab" aria-selected="' + (DISC.tab === 'deal') + '" class="' + (DISC.tab === 'deal' ? 'on' : '') + '" data-act="disc-tab" data-tab="deal">Deals</button></div>';
   if (S.offline) h += offlineBlock();
   // Round 10: there are no real offers, so the Deals tab says so plainly; with offers elsewhere in Bandra West it offers those
@@ -3929,6 +3950,14 @@ function pausedPage(L, it) {
   if (!it.mine) $$('[data-act="more"]', L.el).forEach((b) => { b.disabled = true; b.setAttribute('aria-disabled', 'true'); });
   $$('form.cform', L.el).forEach((f) => { const p = document.createElement('p'); p.className = 't-meta cnone'; p.textContent = 'Comments are off while this post is paused.'; f.replaceWith(p); });
 }
+/* F: a problem pin can be verified only by someone near it: within 1.5 km of the phone's current position or a saved location
+   (in both scopes, now that anyone can browse anywhere). Comments stay open to everyone. */
+function nearForVerify(it) {
+  const spots = (S.locs || []).slice();
+  if (GEO.pos && GEO.state !== 'denied') spots.push(GEO.pos);
+  if (area().src === 'gps') spots.push(area());
+  return spots.some((p) => p && isFinite(p.lat) && distM(p, it) <= RADIUS);
+}
 function problemPage(it) {
   const w = it.ward || {};
   const fixed = !it.outside && w.state === 'fixed';
@@ -3943,8 +3972,13 @@ function problemPage(it) {
     + sampleRow(it) + mapCard(it, it.road.split(',').slice(1).join(',').trim() || it.road) + commentsBlock(it, { placeholder: 'Show how it looks now' }) + '</div></div>'
     // Verify only once the ward says it is fixed, with the heart as the round button beside it. Before that, the heart is the one action.
     + (fixed
-      ? actionBar(mainToggle('verify', it, youV, ['checkcircle', 'Verify'], ['check', 'Verified']), '<button type="button" class="circ press' + (youH ? ' on' : '') + '" data-act="heart" data-id="' + it.id + '" aria-pressed="' + youH + '" aria-label="Same here">' + icon('heart', 20) + '</button>')
+      ? actionBar(verifyLock(mainToggle('verify', it, youV, ['checkcircle', 'Verify'], ['check', 'Verified']), it, youV), '<button type="button" class="circ press' + (youH ? ' on' : '') + '" data-act="heart" data-id="' + it.id + '" aria-pressed="' + youH + '" aria-label="Same here">' + icon('heart', 20) + '</button>')
       : actionBar(heart));
+}
+// the verify toggle, disabled with one plain line when the tester isn't near the pin (a verify already given can still be taken back)
+function verifyLock(btn, it, on) {
+  if (on || nearForVerify(it)) return btn;
+  return '<span class="vlock">' + btn.replace('<button type="button" class="btn press intbtn primary"', '<button type="button" class="btn press intbtn primary" disabled aria-disabled="true" aria-describedby="vlock-' + esc(it.id) + '"') + '<span class="t-meta" id="vlock-' + esc(it.id) + '">Only people near this pin can verify it.</span></span>';
 }
 function noticePage(it) {
   return '<div class="scroll">' + headBar('Notice', it) + heroBlock(it)
@@ -4095,6 +4129,7 @@ const ACT = {
     if (isPaused(anyById(b.dataset.id))) return;
     if (!requireSignIn('verify')) return;
     const id = b.dataset.id;
+    if (!S.verified[id] && !nearForVerify(anyById(id))) return; // F: only people near the pin can verify it
     if (S.offline) { toastErr('Phone offline. Verify again once you are online.'); return; }
     if (S.verified[id]) { delete S.verified[id]; save(); rerenderTop(); toast('Verify taken back'); return; }
     S.verified[id] = true; save(); rerenderTop(); vibrate(); toast('Verified. Thanks for checking.', { undo: () => { delete S.verified[id]; save(); rerenderTop(); } });
@@ -4865,7 +4900,8 @@ function searchResults(q) {
     posts = pq.terms.length || pq.kind ? pool.filter((it) => tm(itemHay(it))) : [];
     if (!posts.length && pq.terms.length) close = pool.filter((it) => pq.terms.some((w) => w.length > 2 && hasWord(itemHay(it), w)));
   }
-  posts = withDist(rankMix(withDist(posts, ref)).slice(0, 20), c); // ranked from the place asked about, distance shown from you
+  posts = isAll() && !pq.spot ? sortNear(withDist(posts, c)).slice(0, 20) // F: Everywhere goes nearest first from the base
+    : withDist(rankMix(withDist(posts, ref)).slice(0, 20), c); // ranked from the place asked about, distance shown from you
   close = withDist(withDist(close, ref).sort((a, b) => a.dist - b.dist).slice(0, 8), c);
   const placeHay = (p) => normQ([p.name, p.type, p.road].join(' '));
   const places = withDist(allPlaces().filter((p) => !S.flagged[p.id] && (pq.terms.length ? tm(placeHay(p)) : !!pq.spot && !pq.kind) && (!pq.spot || nearSpot(pq.spot, p))).map((p) => Object.assign({ kind: 'place' }, p)), c).sort((a, b) => a.dist - b.dist).slice(0, 8);
@@ -5086,9 +5122,13 @@ function openLocation() {
 function locMainHTML(edit) {
   const a = area(), saved = curIsSaved(), c = centre();
   const far = GEO.pos && GEO.place && a.src !== 'gps' && distM(GEO.pos, a) > 300;
-  let h = far ? '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lcard"><button type="button" class="lrow press" data-l="switch-here"><span class="puck on">' + icon('target', 18) + '</span><span class="grow"><b>Switch to your current location</b><span>' + esc(GEO.place.name + (GEO.place.sub ? ', ' + GEO.place.sub : '')) + '</span></span>' + icon('chevR', 18) + '</button></div></div>' : '';
+  // F: the first row switches to Everywhere, or back to the base location
+  let h = '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lcard">' + (isAll()
+    ? '<button type="button" class="lrow press" data-l="scope-near"' + (edit ? ' tabindex="-1"' : '') + '><span class="puck">' + icon('target', 18) + '</span><span class="grow"><b>Back to ' + esc(baseName()) + '</b><span>1.5 km around it</span></span>' + icon('chevR', 18) + '</button>'
+    : '<button type="button" class="lrow press" data-l="scope-all"' + (edit ? ' tabindex="-1"' : '') + '><span class="puck">' + icon('globe', 18) + '</span><span class="grow"><b>Everywhere</b><span>Every pin, any distance</span></span>' + icon('chevR', 18) + '</button>') + '</div></div>';
+  h += far ? '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lcard"><button type="button" class="lrow press" data-l="switch-here"><span class="puck on">' + icon('target', 18) + '</span><span class="grow"><b>Switch to your current location</b><span>' + esc(GEO.place.name + (GEO.place.sub ? ', ' + GEO.place.sub : '')) + '</span></span>' + icon('chevR', 18) + '</button></div></div>' : '';
   h += '<div class="lsec' + (edit ? ' dim' : '') + '"><div class="lhead2"><span>Your location</span>' + (!saved && !edit ? '<button type="button" class="lnk2 press" data-l="save-cur">Save</button>' : '') + '</div>'
-    + '<div class="lcard"><div class="lrow cur"><span class="puck' + (far ? '' : ' on') + '">' + icon('target', 18) + '</span><span class="grow"><b>' + esc(a.name) + '</b><span>' + esc(a.sub || '') + '</span><em>1.5 km around here' + (a.src === 'gps' ? ', from your phone' : '') + '</em></span></div>'
+    + '<div class="lcard"><div class="lrow cur"><span class="puck' + (far ? '' : ' on') + '">' + icon('target', 18) + '</span><span class="grow"><b>' + esc(a.name) + '</b><span>' + esc(a.sub || '') + '</span><em>' + (isAll() ? 'Distances are from here' : '1.5 km around here') + (a.src === 'gps' ? ', from your phone' : '') + '</em></span></div>'
     + (a.src !== 'gps' && !far ? '<button type="button" class="lrow press" data-l="gps"' + (edit ? ' tabindex="-1"' : '') + '><span class="puck">' + icon('target', 18) + '</span><span class="grow"><b>Use my current location</b><span>' + (GEO.state === 'denied' ? 'Location access is off' : 'From your phone’s location') + '</span></span>' + icon('chevR', 18) + '</button>' : '') + '</div></div>';
   if (S.locs.length) {
     h += '<div class="lsec"><div class="lhead2"><span>Saved locations</span><button type="button" class="lnk2 press" data-l="edit" aria-pressed="' + edit + '">' + (edit ? 'Done' : 'Edit') + '</button></div>' + (edit ? '<p class="lhint">Tap one to rename it or remove it.</p>' : '')
@@ -5108,6 +5148,8 @@ function wireLocMain(L, box) {
     const k = b.dataset.l;
     if (L.data.edit && k !== 'edit' && k !== 'edit-one') return;
     if (k === 'edit') { L.data.edit = !L.data.edit; L.render(); return; }
+    if (k === 'scope-all') { setScope('all'); back().then(() => { renderHome({ fit: true }); topSnack('Showing everything. Ward updates are tracked in Bandra West only, for now.', { ms: 5000 }); }); return; }
+    if (k === 'scope-near') { setScope('near'); back().then(() => { renderHome({ fit: true }); toast('Showing ' + baseName()); }); return; }
     if (k === 'edit-one') { openSaveLoc(savedLoc(b.dataset.id), { editId: b.dataset.id }); return; }
     if (k === 'use') { const l = savedLoc(b.dataset.id); useSaved(l); back().then(() => toast('Showing ' + locLabelOf(l))); return; }
     if (k === 'save-cur') { const a = area(); openSaveLoc({ name: a.name, sub: a.sub, lat: a.lat, lng: a.lng }, { fromCurrent: true }); return; }
@@ -5527,7 +5569,7 @@ function openAccount() {
     L.el.innerHTML = '<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">Account</span></div><div class="scroll" style="top:100px;padding:4px 16px 40px">'
       + '<div class="prof"><span class="avatar big">' + icon('user', 26) + '</span><span class="grow"><b class="t-h2">' + esc(S.name || 'Neighbour') + '</b><span class="t-meta">+91 ' + esc(S.phone.replace(/(\d{5})(\d{5})/, '$1 $2')) + '</span></span></div>'
       + '<div class="acol"><button type="button" class="rowbtn press" data-a="pins">' + icon('pin', 20) + '<span class="grow">Your pins</span><span class="t-meta">' + S.mine.length + '</span>' + icon('chevR', 18) + '</button>'
-      + '<button type="button" class="rowbtn press" data-act="change-location">' + icon('target', 20) + '<span class="grow">Your location</span><span class="t-meta">' + esc(area().name) + '</span>' + icon('chevR', 18) + '</button><p class="t-meta" style="margin:-4px 4px 4px">Everything you see is within 1.5 km of it.</p>'
+      + '<button type="button" class="rowbtn press" data-act="change-location">' + icon('target', 20) + '<span class="grow">Your location</span><span class="t-meta">' + esc(area().name) + '</span>' + icon('chevR', 18) + '</button><p class="t-meta" style="margin:-4px 4px 4px">' + (isAll() ? 'Everywhere is on. Distances are from here.' : 'Everything you see is within 1.5 km of it.') + '</p>'
       + '<button type="button" class="rowbtn press" data-a="alerts">' + icon('bell', 20) + '<span class="grow">Alerts</span>' + (alertsUnread() ? '<span class="t-meta">' + alertsUnread() + ' new</span>' : '') + icon('chevR', 18) + '</button>'
       + '<button type="button" class="rowbtn press" data-a="about">' + icon('info', 20) + '<span class="grow">About and privacy</span>' + icon('chevR', 18) + '</button>'
       + '<button type="button" class="rowbtn press" data-a="offline" role="switch" aria-checked="' + S.offline + '">' + icon('wifi-off', 20) + '<span class="grow">Phone offline<span class="t-meta" style="display:block">Shows the offline states in this test</span></span><span class="switch' + (S.offline ? ' on' : '') + '"><i></i></span></button>'
@@ -5737,6 +5779,8 @@ window.__ptp = {
   clusters: () => MK.filter((m) => m.cluster).map((m) => ({ n: m.items.length, ids: m.items.map((x) => x.id) })),
   tapCluster: (i) => { const r = MK.filter((m) => m.cluster)[i]; if (r) r.marker.fire('click'); },
   alerts: () => alertList().map((a) => ({ id: a.id, text: a.text, at: a.at })), samples: () => SAMPLES_ON,
+  rank: (id) => { const it = withDist([anyById(id)], buzzCentre())[0]; return { score: rankScore(it), time: timeliness(it) }; },
+  scope: () => S.scope, nearForVerify: (id) => nearForVerify(anyById(id)), radiusBtn: () => !!document.querySelector('#mapui .radiusbtn'), circle: () => !!circleLayer, mapBounds: () => { const b = map.getBounds(); return { s: b.getSouth(), n: b.getNorth(), w: b.getWest(), e: b.getEast() }; },
   onb3d: () => ({ loaded: !!ONB3D.mod, info: ONB3D.mod && ONB3D.mod.getRendererInfo ? ONB3D.mod.getRendererInfo() : null, live: !!ONB3D.handle && !ONB3D.handle.fallback, sceneCanvases: document.querySelectorAll('.scene canvas').length, slot: (document.querySelector('.scene') || {}).className || null, time: ONB3D.handle && ONB3D.handle.time }),
   onb3dSeek: (t) => { if (ONB3D.handle && ONB3D.handle.seek) ONB3D.handle.seek(t); },
 };
