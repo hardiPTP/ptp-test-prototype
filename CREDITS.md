@@ -68,3 +68,9 @@ The real events, openings and news (round 10) have no photos, because none of th
 No files were added or removed. Three place photos are no longer used on places, because they don't show that place: `promenade` (a Carter Road skyline, was on Joggers' Park), `carter` (Carter Road at the Khar end, was on Otters Club) and `park` (a Bandra West street view, was on Patwardhan Park). Those places now show the place tint. The places that keep a photo show that place: Bandra Fort (`fort`, `fort2`), Mount Mary Church (`churchmm`) and St Andrew's Church (`churchsa`).
 
 The sample pins, asks and notices now load only behind the facilitator flag `?samples`, so the other photos above (`pothole`, `pothole2`, `pothole3`, `flood`, `garbage`, `garbage2`, `garbage3`, `tree`, `drain`, `light`, `footpath`, `cables`, `linking`, `park`, `cat`) are shown only in a `?samples` session. They stay in the bundle, with their credits, for that flag.
+
+## Round 12 map look
+
+- **Base map style:** `/home/claude/mapstyle/ptp-style.json`, the PTP sand recolour of the OpenFreeMap "liberty" style, inlined in `index.html`. Tiles and fonts still come from OpenFreeMap. The attribution reads OpenFreeMap, © OpenMapTiles, data from © OpenStreetMap contributors (ODbL).
+- **Sprite:** a recoloured copy of the liberty sprite (`/home/claude/mapstyle/sprite/ptp*`), inlined as data URLs. It holds the OpenMapTiles/Maki-derived POI icons, recoloured to ink at about 45%.
+- **Illustrated markers:** the six objects (cone, stage, tag, shop, notice board, speech bubble) were rendered with three.js for Push The Pin (the onboarding scene setup in `/home/claude/onb3d`). They are in `/home/claude/mapstyle/icons/`, inlined as PNG by `tools/build.py`. They carry no third-party licence.
