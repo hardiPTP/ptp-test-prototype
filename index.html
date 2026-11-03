@@ -890,6 +890,21 @@ input::placeholder{transition:color .22s}
 /* B: the red alert dot on the masthead avatar (notification red, not the problem orange), 10 px with a 2 px paper ring */
 .avatar{position:relative}
 .avatar .adot{position:absolute;top:1px;right:1px;width:10px;height:10px;border-radius:999px;background:#D92D20;box-shadow:0 0 0 2px var(--paper);pointer-events:none}
+/* P4: the Discover row's place line ends in an ellipsis */
+.dpl{text-overflow:ellipsis}
+.dpl .dplx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* P5: source lines take a tap about 40 px tall, with no change to how they look */
+.srcline{position:relative}
+.srcline::before{content:'';position:absolute;left:-6px;right:-6px;top:50%;height:40px;transform:translateY(-50%)}
+/* P9: intro titles wrap in balanced lines */
+.icopy h1{text-wrap:balance}
+/* P11: while the posting sheet is open the lens cards, the count pill and the marker tags step aside */
+#app.posting #mapui .carousel,#app.posting #mapui .cardpill,#app.posting .mk-lbl{visibility:hidden}
+/* P15: the fallback stills never start a native image drag */
+.intro .scene .fb{-webkit-user-drag:none;user-select:none}
+/* A: the Fix empty line */
+.lhead .fixnone{margin:0}
+.peek.fixnone{padding-bottom:16px}
 
 </style>
 </head>
@@ -2394,11 +2409,31 @@ function fmtRange(a, b) {
   return fmtDay(a) + ', ' + fmtTime(a) + ' to ' + fmtDay(b) + ', ' + fmtTime(b);
 }
 // Round 10: real listings sometimes give a day and no time (noTime) or an end day with no end time (noEndTime). Those never show a made-up time.
-function whenOf(it) { return it.noTime ? fmtDay(it.start) : fmtWhen(it.start); }
-function whenShort(it) { return it.noTime ? fmtDay(it.start) : fmtDay(it.start) + ', ' + fmtTimeShort(it.start); }
+function whenOf(it) { if (isNightly(it)) return nightsOf(it) + ', ' + fmtTime(it.start); return it.noTime ? fmtDay(it.start) : fmtWhen(it.start); }
+function whenShort(it) { if (isNightly(it)) return nightsOf(it) + ', ' + fmtTimeShort(it.start); return it.noTime ? fmtDay(it.start) : fmtDay(it.start) + ', ' + fmtTimeShort(it.start); }
+// Round 11 (E): an opening is a notice; its when line is "New" or "New, opened 4 Oct" (its published date is on the source line)
+function openingWhen(it) { const pl = it.placeId && PLACES.find((p) => p.id === it.placeId); return pl && pl.opened ? 'New, opened ' + fmtDate(pl.opened) : 'New'; }
+// Round 11 (P2): a run of nights at one time reads "2 and 3 Nov, 10:00 pm" (or "2 to 30 Nov, 9:00 pm")
+function isNightly(it) { return !!(it.start && it.end && !it.noTime && (it.nightly || it.noEndTime) && dayDiff(it.end) > dayDiff(it.start)); }
+function nightsOf(it) {
+  const a = new Date(it.start), b = new Date(it.end), same = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+  return a.getDate() + (same ? '' : ' ' + MON[a.getMonth()]) + (dayDiff(b) - dayDiff(a) === 1 ? ' and ' : ' to ') + b.getDate() + ' ' + MON[b.getMonth()];
+}
+// The day line on a detail page, in the one short date format every page uses (round 11, P2)
+function daysOf(it) { if (isNightly(it)) return nightsOf(it); return fmtDay(it.start) + (it.end && dayDiff(it.end) !== dayDiff(it.start) ? ' to ' + fmtDay(it.end) : ''); }
+// Round 11 (P1): a posted or published day with no time in the source never shows a made-up time
+function fmtAt(it) { return it.atNoTime ? fmtDate(it.at) : fmtDate(it.at) + ', ' + fmtTime(it.at); }
+function postedOf(it) { if (!it.atNoTime) return fmtPosted(it.at); const n = dayDiff(it.at); return n === 0 ? 'today' : n === -1 ? 'yesterday' : fmtDate(it.at); }
+// Round 11 (P3): counts named by kind, "1 notice", "2 events", "1 event and 1 notice"
+function kindCount(list) {
+  const n = {}; list.forEach((x) => (n[x.kind] = (n[x.kind] || 0) + 1));
+  const parts = Object.keys(n).map((k) => n[k] + ' ' + KIND[k].name.toLowerCase() + (n[k] === 1 ? '' : 's'));
+  return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0] || '';
+}
 function rangeOf(it) {
   const a = it.start, b = it.end;
   if (!b) return whenOf(it);
+  if (isNightly(it)) return nightsOf(it) + ', ' + fmtTime(a);
   const st = whenOf(it);
   if (dayDiff(a) === dayDiff(b)) return it.noTime || it.noEndTime ? st : st + ' to ' + fmtTime(b);
   return st + ' to ' + fmtDay(b) + (it.noEndTime ? '' : ', ' + fmtTime(b));
@@ -2460,7 +2495,7 @@ function rotateHints(inp, list, opts) {
   };
   const h = setInterval(tick, 3000);
 }
-const HINTS_SEARCH = ['Try \u201cpothole Chapel Road\u201d', 'Try \u201ccomedy\u201d', 'Try \u201cLinking Road events\u201d', 'Try \u201cwater cut\u201d'];
+const HINTS_SEARCH = ['Try \u201ccomedy\u201d', 'Try \u201cLinking Road\u201d', 'Try \u201cHuzur\u201d', 'Try \u201cKarnavati\u201d']; // round 11: real items only
 const HINTS_SPOT = ['Search a road or landmark', 'Try \u201cHill Road\u201d', 'Try \u201cMount Mary\u201d', 'Try \u201cElco Market\u201d'];
 const HINTS_LOCATION = ['Try \u201cChapel Road\u201d', 'Try \u201cPali Hill\u201d', 'Try \u201cCarter Road\u201d', 'Try \u201cKhar Danda\u201d'];
 const HINTS_PLACE = ['Try \u201cBora Bora\u201d', 'Try \u201cCorona Garden\u201d', 'Try \u201cHuzur\u201d', 'Try \u201cKhar Comedy Club\u201d'];
@@ -2487,9 +2522,18 @@ const PTP_LOGO = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 517.49
 
 /* ---- 10-data.js ---- */
 /* Real Bandra West data. Locality and landmark coordinates come from Nominatim (OpenStreetMap), cached in data/geocache.json.
-   Round 10 (user rule): no dummy or mock data except civic problem pins, residents' notices, asks and comments, which are samples
-   written in the residents' voice and carry "Sample post for this test". Events, openings and news are the real, sourced items in
-   12-real.js, with their real dates (never shifted). There are no deals and no invented places. */
+   Round 11 (user rule): no dummy data at all. By default the app shows only the real, sourced items in 12-real.js, with their real
+   dates, plus what the tester posts. The old sample pins, asks and residents' notices (with their comments and counts) load only
+   behind the facilitator flag ?samples, for a moderated session; ?fresh and Reset clear the flag. */
+const SAMPLES_KEY = 'ptp-usertest-samples';
+const SAMPLES_ON = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.has('fresh')) localStorage.removeItem(SAMPLES_KEY);
+    if (q.has('samples')) localStorage.setItem(SAMPLES_KEY, '1');
+    return localStorage.getItem(SAMPLES_KEY) === '1';
+  } catch (e) { return /[?&]samples\b/.test(location.search); }
+})();
 
 const BASE_DAY = new Date(2026, 10, 2); // Mon 2 Nov 2026, the day this data was written for
 // Keep the samples current: shift every sample date by the whole days between 2 Nov 2026 and the day the test runs.
@@ -2543,31 +2587,31 @@ const ROADS = [
 // Real Bandra West places (names and positions from OpenStreetMap) are plain, unclaimed listings with no offers, no owner tick
 // and no contact details. Photos only where the photo shows that landmark. The new openings are added from 12-real.js.
 const PLACES = [
-  { id: 'amex', name: 'American Express Bakery', type: 'Bakery', road: 'Hill Rd', addr: 'Hill Rd, Chimbai, Bandra West', lat: 19.054639, lng: 72.826723, hours: '', about: 'Old Bandra bakery on Hill Road.', photos: [], claimed: false },
-  { id: 'candies', name: 'Candies', type: 'Café', road: "St Andrew's Rd", addr: "St Andrew's Rd, Pali Hill, Bandra West", lat: 19.060982, lng: 72.826899, hours: '', about: 'Café on the Pali Hill slope.', photos: [], claimed: false },
-  { id: 'yoko', name: 'Yoko Sizzlers', type: 'Restaurant', road: 'Hill Rd', addr: 'Hill Rd, near the police station, Bandra West', lat: 19.056267, lng: 72.83473, hours: '', about: 'Sizzlers on Hill Road.', photos: [], claimed: false },
-  { id: 'bonobo', name: 'Bonobo', type: 'Bar', road: '33rd Rd', addr: '33rd Rd, off Linking Rd, Khar', lat: 19.065494, lng: 72.833675, hours: '', about: 'Bar off Linking Road.', photos: [], claimed: false },
-  { id: 'borabora', name: 'Bora Bora', type: 'Bar', road: 'Waterfield Rd', addr: 'Waterfield Rd, Bandra West', lat: 19.062081, lng: 72.834397, hours: '', about: 'Bar and live music on Waterfield Road.', photos: [], claimed: false },
-  { id: 'chimbai', name: 'Chimbai Village Theatre', type: 'Theatre', road: 'Chimbai Rd', addr: 'Chimbai Rd, Chimbai, Bandra West', lat: 19.05804, lng: 72.823329, hours: '', about: 'Small theatre in Chimbai village.', photos: [], claimed: false },
-  { id: 'corona', name: 'Corona Garden', type: 'Event venue', road: 'St John Baptist Rd', addr: 'St John Baptist Rd, Mount Mary, Bandra West', lat: 19.048865, lng: 72.826341, hours: '', about: 'Garden venue near Mount Mary.', photos: [], claimed: false },
-  { id: 'fort', name: 'Bandra Fort', type: 'Fort', road: "Land's End", addr: "Land's End promenade, Bandra West", lat: 19.041844, lng: 72.81837, hours: '', about: 'Castella de Aguada, the Portuguese watchtower at the end of Bandstand.', photos: ['fort', 'fort2'], claimed: false },
-  { id: 'mountmary', name: 'Mount Mary Church', type: 'Church', road: 'Mount Mary Rd', addr: 'Mount Mary Rd, Bandra West', lat: 19.046576, lng: 72.822639, hours: '', about: 'The Basilica of Our Lady of the Mount, at the top of the steps.', photos: ['churchmm'], claimed: false },
-  { id: 'stpeter', name: "St Peter's Church", type: 'Church', road: 'Hill Rd', addr: 'Hill Rd, Chimbai, Bandra West', lat: 19.054744, lng: 72.829517, hours: '', about: 'Parish church on Hill Road, next to St Stanislaus.', photos: [], claimed: false },
-  { id: 'standrew', name: "St Andrew's Church", type: 'Church', road: 'Chimbai Rd', addr: 'Chimbai Rd, Chimbai, Bandra West', lat: 19.055071, lng: 72.824588, hours: '', about: 'The oldest church in Bandra, by the sea end of Hill Road.', photos: ['churchsa'], claimed: false },
-  { id: 'bgm', name: 'Bal Gandharva Rang Mandir', type: 'Theatre', road: '24th Rd', addr: '24th Rd, off Linking Rd, Bandra West', lat: 19.064031, lng: 72.833358, hours: '', about: 'Municipal auditorium off Linking Road.', photos: [], claimed: false },
-  { id: 'kcc', name: 'Khar Comedy Club', type: 'Comedy club', road: 'Linking Rd', addr: 'Linking Rd, Khar West', lat: 19.07501, lng: 72.834396, hours: '', about: 'Stand-up club at the Khar end of Linking Road.', photos: [], claimed: false },
-  { id: 'acropolis', name: 'New Acropolis Bandra', type: 'Cultural centre', road: '15th Rd', addr: '15th Rd, Khar West', lat: 19.067448, lng: 72.831761, hours: '', about: 'Talks and courses in philosophy.', photos: [], claimed: false },
-  { id: 'joggers', name: "Joggers' Park", type: 'Park', road: 'Carter Rd', addr: 'Carter Rd, Bandra West', lat: 19.059633, lng: 72.821379, hours: '', about: 'Sea-facing park with a jogging track at the south end of Carter Road.', photos: ['promenade'], claimed: false },
-  { id: 'otters', name: 'Otters Club', type: 'Club', road: 'Carter Rd promenade', addr: 'Carter Rd promenade, Bandra West', lat: 19.060543, lng: 72.821668, hours: '', about: 'Sports club on the Carter Road promenade.', photos: ['carter'], claimed: false },
-  { id: 'lucky', name: 'Lucky Restaurant', type: 'Restaurant', road: 'SV Rd', addr: 'SV Rd, near Bandra station', lat: 19.053894, lng: 72.837707, hours: '', about: 'Restaurant near Bandra station.', photos: [], claimed: false },
-  { id: 'elco', name: 'Elco Market', type: 'Market', road: 'Hill Rd', addr: 'Hill Rd, Bandra West', lat: 19.055629, lng: 72.832301, hours: '', about: 'Shops and food counters on Hill Road.', photos: [], claimed: false },
-  { id: 'patwardhan', name: 'Patwardhan Park', type: 'Park', road: 'Linking Rd', addr: 'Linking Rd, Bandra West', lat: 19.064156, lng: 72.834111, hours: '', about: 'Ground and walking track off Linking Road.', photos: ['park'], claimed: false },
-  { id: 'gymkhana', name: 'Bandra Gymkhana', type: 'Club', road: "D'Monte Rd", addr: "D'Monte Rd, Bandra West", lat: 19.058696, lng: 72.826242, hours: '', about: 'Old sports club with a cricket ground.', photos: [], claimed: false },
+  { id: 'amex', name: 'American Express Bakery', type: 'Bakery', road: 'Hill Rd', addr: 'Hill Rd, Chimbai, Bandra West', lat: 19.054639, lng: 72.826723, hours: '', about: '', photos: [], claimed: false },
+  { id: 'candies', name: 'Candies', type: 'Café', road: "St Andrew's Rd", addr: "St Andrew's Rd, Pali Hill, Bandra West", lat: 19.060982, lng: 72.826899, hours: '', about: '', photos: [], claimed: false },
+  { id: 'yoko', name: 'Yoko Sizzlers', type: 'Restaurant', road: 'Hill Rd', addr: 'Hill Rd, near the police station, Bandra West', lat: 19.056267, lng: 72.83473, hours: '', about: '', photos: [], claimed: false },
+  { id: 'bonobo', name: 'Bonobo', type: 'Bar', road: '33rd Rd', addr: '33rd Rd, off Linking Rd, Khar', lat: 19.065494, lng: 72.833675, hours: '', about: '', photos: [], claimed: false },
+  { id: 'borabora', name: 'Bora Bora', type: 'Bar', road: 'Waterfield Rd', addr: 'Waterfield Rd, Bandra West', lat: 19.062081, lng: 72.834397, hours: '', about: '', photos: [], claimed: false },
+  { id: 'chimbai', name: 'Chimbai Village Theatre', type: 'Theatre', road: 'Chimbai Rd', addr: 'Chimbai Rd, Chimbai, Bandra West', lat: 19.05804, lng: 72.823329, hours: '', about: '', photos: [], claimed: false },
+  { id: 'corona', name: 'Corona Garden', type: 'Event venue', road: 'St John Baptist Rd', addr: 'St John Baptist Rd, Mount Mary, Bandra West', lat: 19.048865, lng: 72.826341, hours: '', about: '', photos: [], claimed: false },
+  { id: 'fort', name: 'Bandra Fort', type: 'Fort', road: "Land's End", addr: "Land's End promenade, Bandra West", lat: 19.041844, lng: 72.81837, hours: '', about: '', photos: ['fort', 'fort2'], claimed: false },
+  { id: 'mountmary', name: 'Mount Mary Church', type: 'Church', road: 'Mount Mary Rd', addr: 'Mount Mary Rd, Bandra West', lat: 19.046576, lng: 72.822639, hours: '', about: '', photos: ['churchmm'], claimed: false },
+  { id: 'stpeter', name: "St Peter's Church", type: 'Church', road: 'Hill Rd', addr: 'Hill Rd, Chimbai, Bandra West', lat: 19.054744, lng: 72.829517, hours: '', about: '', photos: [], claimed: false },
+  { id: 'standrew', name: "St Andrew's Church", type: 'Church', road: "St Andrew's Rd", addr: "St Andrew's Rd, Bandra West", lat: 19.055071, lng: 72.824588, hours: '', about: '', photos: ['churchsa'], claimed: false },
+  { id: 'bgm', name: 'Bal Gandharva Rang Mandir', type: 'Theatre', road: '24th Rd', addr: '24th Rd, off Linking Rd, Bandra West', lat: 19.064031, lng: 72.833358, hours: '', about: '', photos: [], claimed: false },
+  { id: 'kcc', name: 'Khar Comedy Club', type: 'Comedy club', road: 'Linking Rd', addr: 'Linking Rd, Khar West', lat: 19.07501, lng: 72.834396, hours: '', about: '', photos: [], claimed: false },
+  { id: 'acropolis', name: 'New Acropolis Bandra', type: 'Cultural centre', road: '15th Rd', addr: '15th Rd, Khar West', lat: 19.067448, lng: 72.831761, hours: '', about: '', photos: [], claimed: false },
+  { id: 'joggers', name: "Joggers' Park", type: 'Park', road: 'Carter Rd', addr: 'Carter Rd, Bandra West', lat: 19.059633, lng: 72.821379, hours: '', about: '', photos: [], claimed: false },
+  { id: 'otters', name: 'Otters Club', type: 'Club', road: 'Carter Rd promenade', addr: 'Carter Rd promenade, Bandra West', lat: 19.060543, lng: 72.821668, hours: '', about: '', photos: [], claimed: false },
+  { id: 'lucky', name: 'Lucky Restaurant', type: 'Restaurant', road: 'SV Rd', addr: 'SV Rd, near Bandra station', lat: 19.053894, lng: 72.837707, hours: '', about: '', photos: [], claimed: false },
+  { id: 'elco', name: 'Elco Market', type: 'Market', road: 'Hill Rd', addr: 'Hill Rd, Bandra West', lat: 19.055629, lng: 72.832301, hours: '', about: '', photos: [], claimed: false },
+  { id: 'patwardhan', name: 'Patwardhan Park', type: 'Park', road: 'Linking Rd', addr: 'Linking Rd, Bandra West', lat: 19.064156, lng: 72.834111, hours: '', about: '', photos: [], claimed: false },
+  { id: 'gymkhana', name: 'Bandra Gymkhana', type: 'Club', road: "St Andrew's Rd", addr: "42 St Andrew's Rd, Bandra West", lat: 19.058696, lng: 72.826242, hours: '', about: '', photos: [], claimed: false },
 ];
 
 // Items. ward.state: none (not acknowledged), ack (acknowledged), progress (in progress), fixed.
 // No text names a weekday or a fixed date: dates on screen are computed from today.
-const ITEMS = [
+const SAMPLE_ITEMS = [
   // Problems (Fix)
   { id: 'p-chuim-waste', kind: 'problem', sample: true, cat: 'Waste', text: 'garbage not picked from 3 days near Chuim Village bus stop\nbins full n bags torn, crows n dogs all over it. smell reaching 1st floor. complained on MyBMC app, nothing', road: 'Chuim Village Rd, by the bus stop', lat: 19.07357, lng: 72.82598, at: T('-2 08:40'), photos: ['garbage'], ward: { state: 'none' }, verified: 0, hearts: 14, comments: [['-2 11:05', 'same at the well side.. nobody came'], ['-1 09:30', 'called 1916, they gave a complaint no. lets see 🙄']] },
   { id: 'p-chapel-pothole', kind: 'problem', sample: true, cat: 'Pothole', text: 'pothole at Chapel Rd n Veronica Rd corner, near the church\nautos swerving into ppl walking. someone filled it with rubble, gone again. my activa almost fell today', road: 'Chapel Rd, Veronica Rd corner', lat: 19.05322, lng: 72.82838, at: T('-1 08:15'), photos: [], ward: { state: 'none' }, verified: 0, hearts: 6, comments: [] },
@@ -2608,6 +2652,8 @@ const ITEMS = [
   { id: 'n-linking-dig', kind: 'notice', sample: true, text: 'Linking Rd footpath work, shoe stall side closed 7 to 11 am\ncable trench being refilled. walk on the Patwardhan Park side till its done', road: 'Linking Rd, shoe stall side', lat: 19.06238, lng: 72.83579, at: T('0 06:40'), start: T('1 07:00'), end: T('3 11:00'), photos: [], source: 'Ward notice board', comments: [] },
   { id: 'n-danda-water', kind: 'notice', sample: true, text: 'low water pressure on Danda Creek Rd, 6 to 9 am\nmain is being flushed. society says store a bucket the night before', road: 'Danda Creek Rd', lat: 19.07621, lng: 72.82684, at: T('0 07:05'), start: T('3 06:00'), end: T('3 09:00'), photos: [], source: 'Society office notice', comments: [] },
 ];
+// Round 11: the samples only load with ?samples
+const ITEMS = SAMPLES_ON ? SAMPLE_ITEMS : [];
 // One text per item: the first line is the title everywhere, the rest is the detail
 ITEMS.forEach((it) => { const s = splitText(it.text); it.title = s.title; it.body = s.body; });
 // Posted times, ward updates and comment times are clamped to now
@@ -2628,62 +2674,63 @@ const LENSES = {
   fix: { name: 'Fix', icon: 'mappin' },
   discover: { name: 'Discover', icon: 'gather' },
 };
-const LENS_ORDER = ['around', 'buzz', 'fix', 'discover'];
+const LENS_ORDER = ['buzz', 'around', 'fix', 'discover']; // round 11 (D2): Buzz at the top of the lens menu
 const RADIUS = 1500;
 
 /* ---- 12-real.js ---- */
 /* Round 10: the real, sourced items, copied from /home/claude/realdata/items.json (checked 2 Nov 2026) by
    /home/claude/app/tools/real.py. Each record is the source as given; `app` holds the app id, a place link where the item is at a
-   place already on the map, and a name and type for openings. Garib Nagar (Bandra East) is left out: it does not affect Bandra West. */
+   place already on the map, a name and type for openings, and (round 11, E) the app kind it is sorted into with the reason.
+   Garib Nagar (Bandra East) is left out: it does not affect Bandra West. */
 const REAL = [ 
 { "kind": "event", "title": "Olly Fest returns for its second edition", "body": "A three-day music and cultural festival themed 'Bandra as We Knew It', with rock, blues, funk and contemporary acts plus food, retail and art. The listing says it also spreads across D'Monte Park Recreation Center.", "date_start": "2026-11-20T16:00:00+05:30", "date_end": "2026-11-22T22:00:00+05:30", "venue_or_place": "The Bandra Gymkhana, 42 St Andrews Road", "road": "St Andrews Road", "area": "Bandra West", "lat": 19.058697, "lng": 72.826243, "approx": false, "source_label": "AllEvents", "source_url": "https://allevents.in/mumbai/olly-fest/3900030822014606", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-ollyfest", "placeId": "gymkhana" } }, 
+{ "id": "r-ollyfest", "placeId": "gymkhana", "to": "event", "why": "A dated festival people can attend" } }, 
 { "kind": "event", "title": "Orientation 2 to Living Philosophy Course", "body": "Free orientation for a 16-week practical course on philosophy as a way of life, organised by New Acropolis Bandra.", "date_start": "2026-11-17T19:30:00+05:30", "date_end": "2026-11-17T21:30:00+05:30", "venue_or_place": "New Acropolis Bandra, 202 Humrahi Building, 15th Road", "road": "15th Road", "area": "Bandra West", "lat": 19.078876, "lng": 72.832065, "approx": false, "source_label": "AllEvents", "source_url": "https://allevents.in/mumbai/orientation-2-to-living-philosophy-course-an-invitation-to-a-school-of-philosophy-tickets/80001052326421", "published": null, "price": "Free", "image_url": null, "checked": true, "app": 
-{ "id": "r-philosophy", "placeId": "acropolis" } }, 
+{ "id": "r-philosophy", "placeId": "acropolis", "to": "event", "why": "A dated orientation people can attend" } }, 
 { "kind": "event", "title": "Diwali festival: homemade Diwali snacks sale", "body": "A Diwali festival in Santacruz (West) where homemade Diwali snacks are sold. Organised by Vikrant Girkar; end time not stated.", "date_start": "2026-11-02T10:30:00+05:30", "date_end": null, "venue_or_place": "Gazdar Bandh", "road": null, "area": "Santacruz West", "lat": 19.0844, "lng": 72.83729, "approx": true, "source_label": "AllEvents", "source_url": "https://allevents.in/mumbai/diwali-festival/200030949474357", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-diwali" } }, 
+{ "id": "r-diwali", "to": "event", "why": "A dated sale people can attend" } }, 
 { "kind": "event", "title": "Comedy Riff: KCC", "body": "Late stand-up show listed at Khar Comedy Club on 2 and 3 November at 10 pm.", "date_start": "2026-11-02T22:00:00+05:30", "date_end": "2026-11-03T23:59:00+05:30", "venue_or_place": "Khar Comedy Club", "road": null, "area": "Khar West", "lat": 19.068241, "lng": 72.840041, "approx": true, "source_label": "District", "source_url": "https://www.district.in/events/upcoming-events-in-mumbai", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-comedyriff", "placeId": "kcc", "endDateOnly": true } }, 
+{ "id": "r-comedyriff", "placeId": "kcc", "endDateOnly": true, "nightly": true, "label": "District listings", "to": "event", "why": "A dated show people can attend" } }, 
 { "kind": "event", "title": "Meanwhile by Manjeet Sarkar", "body": "Stand-up show by Manjeet Sarkar at That Comedy Club, with multiple slots on 6 and 7 November.", "date_start": "2026-11-06", "date_end": "2026-11-07", "venue_or_place": "That Comedy Club", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "District", "source_url": "https://www.district.in/events/upcoming-events-in-mumbai", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-meanwhile" } }, 
+{ "id": "r-meanwhile", "label": "District listings", "to": "event", "why": "A dated show people can attend" } }, 
 { "kind": "event", "title": "RelationShit Advice: Raunaq Rajani", "body": "Comedy show by Raunaq Rajani at The Habitat, Khar West.", "date_start": "2026-11-11T19:00:00+05:30", "date_end": null, "venue_or_place": "The Habitat", "road": null, "area": "Khar West", "lat": 19.068241, "lng": 72.840041, "approx": true, "source_label": "District", "source_url": "https://www.district.in/events/upcoming-events-in-mumbai", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-relationshit" } }, 
+{ "id": "r-relationshit", "label": "District listings", "to": "event", "why": "A dated show people can attend" } }, 
 { "kind": "event", "title": "Vegan Mumbai Potluck (2026)", "body": "Vegan potluck listed in Bandra West. Exact venue not confirmed; the event page could not be opened.", "date_start": "2026-11-08T14:00:00+05:30", "date_end": null, "venue_or_place": "Bandra West (venue not confirmed)", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "AllEvents", "source_url": "https://allevents.in/mumbai/vegan-mumbai-potluck-2026/100002004063685431", "published": null, "price": null, "image_url": null, "checked": false, "app": 
-{ "id": "r-vegan" } }, 
+{ "id": "r-vegan", "to": "event", "why": "A dated potluck people can attend" } }, 
 { "kind": "opening", "title": "Late Checkout opens second outlet in Bandra", "body": "Chrome Hospitality has opened a 6,000 sq ft Late Checkout at the former Monkey Bar address in Bandra, the group's ninth venue in Mumbai. It is cocktail-led with a bar-focused food menu and slow-brew coffee; open daily from 12 pm.", "date_start": null, "date_end": null, "venue_or_place": "Late Checkout, former Monkey Bar address", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "Hotelier India", "source_url": "https://www.hotelierindia.com/development/chrome-hospitality-opens-second-late-checkout-outpost-in-mumbais-bandra", "published": "2026-10-30", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "pl-latecheckout", "name": "Late Checkout", "type": "Bar and café", "road": "Bandra West", "addr": "Former Monkey Bar address, Bandra West", "hours": "Open daily from 12 pm" } }, 
+{ "id": "pl-latecheckout", "name": "Late Checkout", "type": "Bar and café", "road": "Bandra West", "addr": "Former Monkey Bar address, Bandra West", "hours": "Open daily from 12 pm", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "Huzur opens off Linking Road", "body": "Fine-casual restaurant serving dishes from Lahori, Shinwari and Afghan traditions, at the corner of 32nd and 36th Road, off Linking Road, near National College. Open 12 pm to 12 am.", "date_start": null, "date_end": null, "venue_or_place": "Huzur, corner of 32nd and 36th Road", "road": "36th Road", "area": "Bandra West", "lat": 19.064381, "lng": 72.83657, "approx": true, "source_label": "Curly Tales", "source_url": "https://curlytales.com/india/food/new-restaurants-in-mumbai-to-hangout-with-your-friends-in-november/", "published": "2026-10-28", "price": "Approx Rs 2,000 for two", "image_url": null, "checked": true, "app": 
-{ "id": "pl-huzur", "name": "Huzur", "type": "Restaurant", "road": "36th Rd", "addr": "Corner of 32nd and 36th Rd, off Linking Rd, near National College", "hours": "Open 12 pm to 12 am" } }, 
+{ "id": "pl-huzur", "name": "Huzur", "type": "Restaurant", "road": "36th Rd", "addr": "Corner of 32nd and 36th Rd, off Linking Rd, near National College", "hours": "Open 12 pm to 12 am", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "The Alter Ego opens in Bandra West", "body": "A duplex restaurant with Blanco, a comfort-food space on the ground floor, Noir, a more experimental space upstairs, and Eclipse, a ten-seat private room. The menu reworks Indian dishes with global techniques.", "date_start": null, "date_end": null, "venue_or_place": "The Alter Ego", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "MissMalini", "source_url": "https://www.missmalini.com/2026/10/22/your-food-has-an-alter-ego-and-it-lives-in-this-new-bandra-restaurant", "published": "2026-10-22", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "pl-alterego", "name": "The Alter Ego", "type": "Restaurant", "road": "Bandra West", "addr": "Bandra West" } }, 
+{ "id": "pl-alterego", "name": "The Alter Ego", "type": "Restaurant", "road": "Bandra West", "addr": "Bandra West", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "Pastel, a Portuguese bakery and all-day café, in Chimbai Village", "body": "Listed in Esquire India's October 2026 hotlist of new restaurants and bars as a Portuguese bakery and all-day café in Chimbai Village, Bandra.", "date_start": null, "date_end": null, "venue_or_place": "Pastel, Chimbai Village", "road": null, "area": "Bandra West", "lat": 19.057105, "lng": 72.823971, "approx": true, "source_label": "Esquire India", "source_url": "https://www.esquireindia.co.in/food-and-drinks/what-to-eat/esquire-india-october-hotlist-new-restaurants-and-bars-across-india-fitour-n%C4%81m-chor-bizarre-and-more", "published": "2026-10-14", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "pl-pastel", "name": "Pastel", "type": "Bakery and café", "road": "Chimbai Village", "addr": "Chimbai Village, Bandra West" } }, 
+{ "id": "pl-pastel", "name": "Pastel", "type": "Bakery and café", "road": "Chimbai Village", "addr": "Chimbai Village, Bandra West", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "FITOUR, a 14-seat tasting-menu restaurant, opens in Bandra West", "body": "Aspect Hospitality opened FITOUR on 4 October 2026, serving a multi-course Indian tasting menu with sound, lighting and fragrance as part of the experience.", "date_start": "2026-10-04", "date_end": null, "venue_or_place": "FITOUR", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "Indian Retailer", "source_url": "https://www.indianretailer.com/news/aspect-hospitality-opens-fitour-mumbais-bandra-west", "published": "2026-10-05", "price": "Tasting menu Rs 8,245 plus taxes", "image_url": null, "checked": true, "app": 
-{ "id": "pl-fitour", "name": "FITOUR", "type": "Restaurant", "road": "Bandra West", "addr": "Bandra West" } }, 
+{ "id": "pl-fitour", "name": "FITOUR", "type": "Restaurant", "road": "Bandra West", "addr": "Bandra West", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "safety", "title": "Fire at Foo restaurant in VN Sphere Mall, Linking Road", "body": "A Level II fire broke out early Friday on the third floor of VN Sphere Mall, affecting Foo restaurant. The fire brigade got the call at 6:02 am and brought it under control by 8:55 am; no injuries as the restaurant was closed. Cause under investigation.", "date_start": "2026-10-30T06:02:00+05:30", "date_end": "2026-10-30T08:55:00+05:30", "venue_or_place": "VN Sphere Mall", "road": "Linking Road", "area": "Bandra West", "lat": 19.065355, "lng": 72.834478, "approx": true, "source_label": "Free Press Journal", "source_url": "https://www.freepressjournal.in/mumbai/major-fire-breaks-out-at-foo-restaurant-in-bandra-wests-vn-sphere-mall-no-injuries-reported", "published": "2026-10-30", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-fire" } }, 
+{ "id": "r-fire", "to": "notice", "why": "The fire was out by 8:55 am with no damage left on the road: news, no problem to fix" } }, 
 { "kind": "traffic", "title": "Karnavati Express to run from Bandra Terminus, 1 to 30 November", "body": "Western Railway has moved the Karnavati Express terminal from Mumbai Central to Bandra Terminus for a month because of yard reconstruction at Mumbai Central. Train 12933 departs Bandra Terminus at 1:55 pm; 12934 arrives at 12:20 pm.", "date_start": "2026-11-01", "date_end": "2026-11-30", "venue_or_place": "Bandra Terminus", "road": null, "area": "Bandra East", "adjacent": true, "lat": 19.062388, "lng": 72.840918, "approx": false, "source_label": "Gujarat Samachar", "source_url": "https://english.gujaratsamachar.com/news/ahmedabad/ahmedabad-mumbai-karnavati-express-to-run-from-bandra-terminus-instead-of-mumbai-central-from-nov-1-69015334225", "published": "2026-10-27", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-karnavati" } }, 
+{ "id": "r-karnavati", "to": "notice", "why": "A train terminal change for a month: a traffic notice, nothing to fix" } }, 
 { "kind": "notice", "title": "Churches urge eco-friendly All Souls' Day on 2 November", "body": "St Andrew's Church, Bandra asks visitors to use potted plants and battery lights instead of plastic-wrapped wreaths and candles, and says it will look after the plants afterwards. St Peter's Seaside Cemetery in Bandra is also named.", "date_start": "2026-11-02", "date_end": "2026-11-02", "venue_or_place": "St Andrew's Church", "road": "St Andrew's Road", "area": "Bandra West", "lat": 19.055072, "lng": 72.824589, "approx": false, "source_label": "Free Press Journal", "source_url": "https://www.freepressjournal.in/mumbai/mumbai-churches-urge-eco-friendly-all-souls-day-on-november-2-encourage-potted-plants-instead-of-candles-and-wreaths", "published": "2026-11-01", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-allsouls", "placeId": "standrew" } }, 
+{ "id": "r-allsouls", "placeId": "standrew", "to": "notice", "why": "A church request for All Souls Day: an announcement" } }, 
 { "kind": "civic_news", "title": "Smog over the city as AQI stays poor", "body": "Mumbai's AQI was 113 on Monday morning, in the poor range for several weeks, with hazy skylines reported over Bandra. IMD forecasts cloudy skies with light rain and a maximum near 34°C.", "date_start": "2026-11-02", "date_end": null, "venue_or_place": "Citywide; haze reported over Bandra", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "Free Press Journal", "source_url": "https://www.freepressjournal.in/mumbai/mumbai-weather-update-cloudy-skies-gusty-winds-bring-morning-chill-smog-hangs-over-city-as-aqi-remains-poor-mumbai-news", "published": "2026-11-02", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-smog" } }, 
+{ "id": "r-smog", "to": "notice", "why": "A citywide air quality advisory" } }, 
 { "kind": "event", "title": "Boombastic Karaoke at Raasta, Khar", "body": "Karaoke night listed at Raasta Bombay, Khar, from 9 pm, running until 30 November.", "date_start": "2026-11-02T21:00:00+05:30", "date_end": "2026-11-30", "venue_or_place": "Raasta Bombay, Khar", "road": null, "area": "Khar West", "lat": 19.068241, "lng": 72.840041, "approx": true, "source_label": "Mumbai2Go", "source_url": "https://mumbai2go.in/event/boombastic-karaoke-20261102-779a82", "published": null, "price": "Rs 349", "image_url": null, "checked": false, "app": 
-{ "id": "r-karaoke" } }, 
+{ "id": "r-karaoke", "to": "event", "why": "A dated karaoke night people can attend; Rs 349 is its price, not an offer" } }, 
 { "kind": "event", "title": "Monad Blitz Mumbai: Devcon Edition", "body": "One-day builder event and hackathon on the Monad blockchain with a US$5,000 prize pool; registration requires approval. Listed in Bandra West; exact address shared only with registrants.", "date_start": "2026-11-04", "date_end": "2026-11-04", "venue_or_place": "Bandra West (address shared with registrants)", "road": null, "area": "Bandra West", "lat": 19.058336, "lng": 72.830267, "approx": true, "source_label": "Luma", "source_url": "https://luma.com/Blitz-Mumbai-Devcon-2026", "published": null, "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "r-monad" } }, 
+{ "id": "r-monad", "to": "event", "why": "A dated hackathon people can attend" } }, 
 { "kind": "opening", "title": "The Powder Room opens on Linking Road", "body": "A restaurant and cocktail club with a 'MediterrAsian' menu, from the team behind Delhi's Lair and AaBbC, opened on 3 September at Mansionz One. It also has a live Afro-jazz music programme.", "date_start": "2026-09-03", "date_end": null, "venue_or_place": "The Powder Room, 8th Floor, Mansionz One", "road": "Linking Road", "area": "Bandra West", "lat": 19.061079, "lng": 72.836589, "approx": false, "source_label": "Time Out Mumbai", "source_url": "https://www.timeout.com/mumbai/news/the-powder-room-in-mumbai-marries-cocktails-with-a-mediterrasian-dining-experience-090726", "published": "2026-09-07", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "pl-powderroom", "name": "The Powder Room", "type": "Restaurant and bar", "road": "Linking Rd", "addr": "8th floor, Mansionz One, Linking Rd" } }, 
+{ "id": "pl-powderroom", "name": "The Powder Room", "type": "Restaurant and bar", "road": "Linking Rd", "addr": "8th floor, Mansionz One, Linking Rd", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "House Of Koobideh opens its first Mumbai outlet on SV Road", "body": "The Bengaluru and Mangaluru chain opened on SV Road, Bandra, near Daily Bar, on 27 September, serving Persian kebabs, Adana rolls and Kutchi Memon biryani.", "date_start": "2026-09-27", "date_end": null, "venue_or_place": "House Of Koobideh, near Daily Bar", "road": "SV Road", "area": "Bandra West", "lat": 19.0524, "lng": 72.838219, "approx": true, "source_label": "Curly Tales", "source_url": "https://curlytales.com/india/food/bengalurus-house-of-koobideh-opens-st-outpost-in-mumbai-serving-adana-rolls-persian-kebabs-more/", "published": "2026-10-12", "price": "Rs 2,000+ for two", "image_url": null, "checked": true, "app": 
-{ "id": "pl-koobideh", "name": "House Of Koobideh", "type": "Restaurant", "road": "SV Rd", "addr": "SV Rd, near Daily Bar, Bandra West" } }, 
+{ "id": "pl-koobideh", "name": "House Of Koobideh", "type": "Restaurant", "road": "SV Rd", "addr": "SV Rd, near Daily Bar, Bandra West", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "Thought Coffee on Chapel Road", "body": "Speciality coffee café serving matcha, croissants, bakes and smoothie bowls, at Shop 13, Pearl Heaven, Chapel Road, opposite Bandra Born. Listed among new Mumbai restaurants for October.", "date_start": null, "date_end": null, "venue_or_place": "Thought Coffee, Shop 13, Pearl Heaven", "road": "Chapel Road", "area": "Mount Mary", "lat": 19.050761, "lng": 72.82724, "approx": true, "source_label": "Curly Tales", "source_url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "published": "2026-09-29", "price": "Approx Rs 400 for two", "image_url": null, "checked": true, "app": 
-{ "id": "pl-thoughtcoffee", "name": "Thought Coffee", "type": "Café", "road": "Chapel Rd", "addr": "Shop 13, Pearl Heaven, Chapel Rd, opposite Bandra Born" } }, 
+{ "id": "pl-thoughtcoffee", "name": "Thought Coffee", "type": "Café", "road": "Chapel Rd", "addr": "Shop 13, Pearl Heaven, Chapel Rd, opposite Bandra Born", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "That Grocery Cafe by Foodstories on Hill Road", "body": "Café with comfort food and bakery items plus a grocery store, on the ground floor of the Globus Building, Hill Road. Listed among new Mumbai restaurants for October.", "date_start": null, "date_end": null, "venue_or_place": "That Grocery Cafe by Foodstories, Globus Building", "road": "Hill Road", "area": "Bandra West", "lat": 19.0532, "lng": 72.824144, "approx": true, "source_label": "Curly Tales", "source_url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "published": "2026-09-29", "price": "Approx Rs 750 for two", "image_url": null, "checked": true, "app": 
-{ "id": "pl-thatgrocery", "name": "That Grocery Cafe by Foodstories", "type": "Café and grocery", "road": "Hill Rd", "addr": "Ground floor, Globus Building, Hill Rd" } }, 
+{ "id": "pl-thatgrocery", "name": "That Grocery Cafe by Foodstories", "type": "Café and grocery", "road": "Hill Rd", "addr": "Ground floor, Globus Building, Hill Rd", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "Supa San, a Japanese izakaya, at Mansionz One", "body": "Izakaya-style restaurant with sushi, tempura, robata, ramen and katsu curry at Mansionz One, Linking Road. Listed among new Mumbai restaurants for October.", "date_start": null, "date_end": null, "venue_or_place": "Supa San, 14th Floor, Mansionz One", "road": "Linking Road", "area": "Bandra West", "lat": 19.061079, "lng": 72.836589, "approx": false, "source_label": "Curly Tales", "source_url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "published": "2026-09-29", "price": "Approx Rs 2,000 for two", "image_url": null, "checked": true, "app": 
-{ "id": "pl-supasan", "name": "Supa San", "type": "Restaurant", "road": "Linking Rd", "addr": "14th floor, Mansionz One, Linking Rd" } }, 
+{ "id": "pl-supasan", "name": "Supa San", "type": "Restaurant", "road": "Linking Rd", "addr": "14th floor, Mansionz One, Linking Rd", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } }, 
 { "kind": "opening", "title": "The Dravidian opens on Hill Road", "body": "Vegetarian quick-service restaurant serving regional South Indian food from Karnataka, Kerala, Tamil Nadu and Andhra Pradesh, on Hill Road.", "date_start": null, "date_end": null, "venue_or_place": "The Dravidian", "road": "Hill Road", "area": "Bandra West", "lat": 19.0532, "lng": 72.824144, "approx": true, "source_label": "Local Samosa", "source_url": "https://www.localsamosa.com/news/local-eats-edit-october-third-week-2026-12676547", "published": "2026-10-15", "price": null, "image_url": null, "checked": true, "app": 
-{ "id": "pl-dravidian", "name": "The Dravidian", "type": "Restaurant", "road": "Hill Rd", "addr": "Hill Rd, Bandra West" } } ];
+{ "id": "pl-dravidian", "name": "The Dravidian", "type": "Restaurant", "road": "Hill Rd", "addr": "Hill Rd, Bandra West", "to": "notice", "why": "A new opening with no offer and no dated event: an announcement" } } ];
 
 // A source date as Mumbai wall-clock time (the source gives +05:30). A day with no time is that day's start, or its end for an end.
 function realDate(s, endOfDay) {
@@ -2692,46 +2739,68 @@ function realDate(s, endOfDay) {
   return new Date(+m[1], +m[2] - 1, +m[3], t ? +m[4] : endOfDay ? 23 : 0, t ? +m[5] : endOfDay ? 59 : 0).toISOString();
 }
 const hasTime = (s) => /T\d\d:\d\d/.test(s || '');
-// The road and landmark line: the venue, then the road if the venue does not name it, then the area when it is not Bandra West
+// The road and landmark line: the venue, then the road if the venue does not name it, then the area when it is not Bandra West.
+// Round 11 (P7): the whole area name is compared, so "Bandra Terminus" still gets ", Bandra East"; a venue that ends in the area's
+// first word ("Raasta Bombay, Khar") gets that word completed ("Khar West") instead of a second area.
 function realRoad(r) {
   let s = r.venue_or_place || r.road || r.area;
   if (r.road && !fold(s).includes(fold(r.road))) s += ', ' + r.road;
-  if (r.area && r.area !== 'Bandra West' && !fold(s).includes(fold(r.area.split(' ')[0]))) s += ', ' + r.area;
+  if (r.area && r.area !== 'Bandra West' && !fold(s).includes(fold(r.area))) {
+    const parts = s.split(', '), last = parts[parts.length - 1];
+    if (parts.length > 1 && fold(r.area).startsWith(fold(last) + ' ')) { parts[parts.length - 1] = r.area; s = parts.join(', '); }
+    else s += ', ' + r.area;
+  }
   return s;
 }
-function realSrc(r) { return { label: r.source_label, url: r.source_url, date: r.published ? realDate(r.published) : null, checked: r.checked !== false }; }
-// Comments stay samples (user rule, round 10), in the residents' voice
-const SAMPLE_COMMENTS = {
+function realSrc(r) { return { label: (r.app && r.app.label) || r.source_label, url: r.source_url, date: r.published ? realDate(r.published) : null, checked: r.checked !== false }; }
+// Round 11 (C1): the made-up Bandra West centre the sources fall back to when they name no venue or road
+const BW_FALLBACK = { lat: 19.058336, lng: 72.830267 };
+function noRealPoint(r) {
+  if (!r.approx) return false;
+  if (r.lat === BW_FALLBACK.lat && r.lng === BW_FALLBACK.lng) return true;
+  return /^bandra west\b/i.test(r.venue_or_place || '') || (r.road || (r.app && r.app.road)) === 'Bandra West';
+}
+// Sample comments on real items only load with ?samples (round 11, A)
+const SAMPLE_COMMENTS = !SAMPLES_ON ? {} : {
   'r-ollyfest': [['-1 17:40', 'anyone know if the D\'Monte Park side needs a separate pass?'], ['-1 18:00', 'listing doesnt say, will ask at the gate n post here']],
   'r-allsouls': [['0 07:10', 'St Andrew\'s gate had plant sellers from 6 am, ₹80 a pot']],
   'r-fire': [['-3 09:30', 'smoke was visible from Linking Rd signal, all ok now']],
 };
 const NEWS_DAYS = 7; // safety, civic and development news stays up for a week after it was published
+const OPENING_DAYS = 30; // round 11: an opening is news for a month after it was published
 const endOfDay = (iso) => { const d = new Date(iso); d.setHours(23, 59, 0, 0); return d.toISOString(); };
+const daysAfter = (iso, n) => endOfDay(new Date(new Date(iso).getTime() + n * 864e5).toISOString());
 REAL.forEach((r) => {
-  const a = r.app, pl = a.placeId && PLACES.find((p) => p.id === a.placeId);
-  // an item at a place already on the map sits on that place, so it is not approximate
-  const pos = pl ? { lat: pl.lat, lng: pl.lng, approx: false } : { lat: r.lat, lng: r.lng, approx: !!r.approx };
-  const photos = r.image_url ? [r.image_url] : [];
+  const a = r.app;
+  // Round 11 (E): an opening is a notice, linked to its place (the place stays on the map with its real name, type, road and position)
   if (r.kind === 'opening') {
-    PLACES.push({ id: a.id, name: a.name, type: a.type, road: a.road, addr: a.addr, lat: pos.lat, lng: pos.lng, approx: pos.approx, hours: a.hours || '', about: r.body, photos, claimed: false,
+    const np = noRealPoint(r);
+    PLACES.push({ id: a.id, name: a.name, type: a.type, road: a.road, addr: a.addr, lat: r.lat, lng: r.lng, approx: !!r.approx, noPoint: np, hours: a.hours || '', about: '', photos: [], claimed: false,
       real: true, isNew: true, opened: r.date_start ? realDate(r.date_start) : null, price: r.price, src: realSrc(r) });
-    return;
   }
-  const o = { id: a.id, real: true, text: r.title + '\n' + r.body, placeId: pl ? pl.id : undefined, road: pl ? pl.name + ', ' + pl.road : realRoad(r), area: r.area,
-    lat: pos.lat, lng: pos.lng, approx: pos.approx, photos, price: r.price, src: realSrc(r), comments: SAMPLE_COMMENTS[a.id] || [], interested: 0 };
+  const pl = (a.placeId || r.kind === 'opening') && PLACES.find((p) => p.id === (a.placeId || a.id));
+  // an item at a place on the map sits on that place
+  const pos = pl ? { lat: pl.lat, lng: pl.lng, approx: !!pl.approx, noPoint: !!pl.noPoint } : { lat: r.lat, lng: r.lng, approx: !!r.approx, noPoint: noRealPoint(r) };
+  const photos = r.image_url ? [r.image_url] : [];
+  const o = { id: r.kind === 'opening' ? 'r-' + a.id.slice(3) : a.id, real: true, kind: a.to, srcKind: r.kind, text: r.title + '\n' + r.body, placeId: pl ? pl.id : undefined, road: pl ? pl.name + ', ' + pl.road : realRoad(r), area: r.area,
+    lat: pos.lat, lng: pos.lng, approx: pos.approx, noPoint: pos.noPoint, photos, price: r.price, src: realSrc(r), comments: SAMPLE_COMMENTS[a.id] || [], interested: 0, verified: 0, hearts: 0 };
   Object.assign(o, splitText(o.text));
-  o.start = realDate(r.date_start);
-  o.noTime = !hasTime(r.date_start);
+  o.start = realDate(r.date_start || r.published);
+  o.noTime = !hasTime(r.date_start || r.published);
   if (r.date_end) { o.noEndTime = a.endDateOnly || !hasTime(r.date_end); o.end = o.noEndTime ? realDate(r.date_end.slice(0, 10), true) : realDate(r.date_end); }
-  if (r.kind === 'event') {
-    o.kind = 'event';
+  if (a.nightly) o.nightly = true;
+  if (o.kind === 'event') {
     o.liveTill = o.end || endOfDay(o.start); // no end given: it runs to the end of its day
-  } else {
-    o.kind = 'notice'; o.news = r.kind; // notice, traffic, safety, civic_news
+  } else if (o.kind === 'notice') {
+    o.news = r.kind; // what the source called it: notice, traffic, safety, civic_news, opening
     o.at = r.published ? realDate(r.published) : o.start;
-    const news = r.kind === 'safety' || r.kind === 'civic_news' || r.kind === 'development';
-    o.liveTill = news ? endOfDay(new Date(new Date(o.at).getTime() + NEWS_DAYS * 864e5).toISOString()) : endOfDay(o.end || o.start);
+    o.atNoTime = !hasTime(r.published || r.date_start);
+    if (r.kind === 'opening') { o.start = o.at; o.noTime = o.atNoTime; delete o.end; o.liveTill = daysAfter(o.at, OPENING_DAYS); }
+    else if (r.kind === 'safety' || r.kind === 'civic_news' || r.kind === 'development') o.liveTill = daysAfter(o.at, NEWS_DAYS);
+    else o.liveTill = endOfDay(o.end || o.start);
+  } else if (o.kind === 'problem') {
+    // a real civic problem: posted on its source date, never a made-up ward step, verify or fix (round 11, E)
+    o.at = r.published ? realDate(r.published) : o.start; o.atNoTime = !hasTime(r.published || r.date_start); o.ward = { state: 'none' }; o.cat = a.cat || 'Other';
   }
   ITEMS.push(o);
 });
@@ -2754,13 +2823,20 @@ function load() {
   if (!S.cur && S.areaId) { const a = AREAS.find((x) => x.id === S.areaId); if (a) { const l = Object.assign({ id: 'loc-' + a.id, label: a.name }, areaLoc(a)); if (!S.locs.length) S.locs.push(l); S.wantGps = !!(S.located && S.gps); S.cur = S.located && S.gps ? { src: 'gps', name: a.name, sub: 'Bandra West', lat: S.gps.lat, lng: S.gps.lng } : Object.assign({ src: 'saved' }, l); } }
 }
 function save() {
+  // round 11: the red alert dot follows every change that can add an alert (interested, pause) without waiting for a re-render
+  try { const d = !!(S.signedIn && alertsUnseen()); if (d !== save.dot) { save.dot = d; if ($('#mast').firstChild) renderMast(); } } catch (e) {}
   try { const o = {}; PERSIST.forEach((k) => (o[k] = S[k])); localStorage.setItem(LS_KEY, JSON.stringify(o)); }
   catch (e) {
     // Storage full (photos are the big part): drop photos from the oldest posts, then retry once
     try { S.mine.slice(0, -1).forEach((m) => (m.photos = (m.photos || []).slice(0, 1))); const o = {}; PERSIST.forEach((k) => (o[k] = S[k])); localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch (e2) {}
   }
 }
-function resetTest() { try { localStorage.removeItem(LS_KEY); } catch (e) {} location.reload(); }
+function resetTest() {
+  try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SAMPLES_KEY); } catch (e) {}
+  // Reset also ends a ?samples session (round 11)
+  try { const u = new URL(location.href); if (u.searchParams.has('samples')) { u.searchParams.delete('samples'); location.replace(u.pathname + (u.searchParams.toString() ? '?' + u.searchParams : '') + u.hash); return; } } catch (e) {}
+  location.reload();
+}
 
 /* Location: one current location at a time (GPS, a saved location, or a place picked in search), plus saved locations.
    S.cur = { src: 'gps' | 'saved' | 'place', id (saved only), name, sub, lat, lng }. S.locs = [{ id, label, name, sub, lat, lng }]. */
@@ -2833,8 +2909,8 @@ function lensItems(lens) {
 function placesNear() { const c = centre(); return withDist(allPlaces().filter((p) => !S.flagged[p.id] && near(p, c)).map((p) => Object.assign({ kind: 'place' }, p)), c); }
 
 /* One ordering rule for every mixed list (Around me, Buzz, search):
-   1. your own posts stay on top for 24 hours, 2. score = timeliness x nearness,
-   3. the first 6 rows take the best item of every kind present, ordered by score (Event, Problem, Ask, Deal, Notice only breaks ties),
+   1. score = timeliness x nearness (round 11, D1: your own posts are ranked like everything else, they no longer jump to the top),
+   2. the first 6 rows take the best item of every kind present, ordered by score (Event, Problem, Ask, Deal, Notice only breaks ties),
       then the rest by score, never more than 2 of a kind in a row.
    Mixing only reorders: nothing is added. */
 const MIX_ORDER = ['event', 'problem', 'ask', 'deal', 'notice'];
@@ -2853,10 +2929,9 @@ function nearness(d) { return d <= 300 ? 1 : d <= 800 ? .7 : d <= 1500 ? .45 : .
 function rankScore(it) { return timeliness(it) * nearness(it.dist != null ? it.dist : distM(centre(), it)); }
 function isFreshMine(it) { return !!it.mine && Date.now() - tms(it.at) < 864e5; }
 function rankMix(list) {
-  const fresh = list.filter(isFreshMine).sort((a, b) => tms(b.at) - tms(a.at));
-  const rest = list.filter((x) => !isFreshMine(x)).map((x) => ({ x, s: rankScore(x) }))
+  const rest = list.map((x) => ({ x, s: rankScore(x) }))
     .sort((a, b) => b.s - a.s || (a.x.dist || 0) - (b.x.dist || 0) || lastActivity(b.x) - lastActivity(a.x)).map((o) => o.x);
-  const out = fresh.slice();
+  const out = [];
   const seeds = [];
   MIX_ORDER.forEach((k) => { const i = rest.findIndex((x) => x.kind === k); if (i >= 0) seeds.push(rest.splice(i, 1)[0]); });
   // the coverage picks, in score order; the next best items join them while the first 6 rows still have room
@@ -2880,7 +2955,7 @@ function fixSort(list) { return list.sort((a, b) => ((a.ward || {}).state === 'f
 function buzzItems() {
   const c = buzzCentre();
   const list = withDist(allItems().filter((it) => visible(it) && near(it, c)), c);
-  const scored = list.map((x) => ({ x, s: isFreshMine(x) ? 9 : rankScore(x) })).sort((a, b) => b.s - a.s || a.x.dist - b.x.dist).map((o) => o.x);
+  const scored = list.map((x) => ({ x, s: rankScore(x) })).sort((a, b) => b.s - a.s || a.x.dist - b.x.dist).map((o) => o.x);
   const cap = { problem: 5, event: 3, deal: 2, ask: 2, notice: 2 }, used = {}, pick = [];
   const take = (it) => { pick.push(it); used[it.kind] = (used[it.kind] || 0) + 1; };
   scored.filter(isFreshMine).forEach(take);
@@ -3033,6 +3108,17 @@ function initMap() {
   map.on('move', () => spotMoving());
   map.on('click', () => { if ((!CARD_LENS[mapMode] || mapMode === 'search') && S.selected) { closePeek(); } });
 }
+/* Round 11 (P16): the positron style compares a few feature numbers (rank, ref_length, admin_level) that some features don't have,
+   which logged "Expected value to be of type number, but found null instead". Each such read gets a coalesce default. */
+function coalesceNumbers(e) {
+  if (!Array.isArray(e)) return e;
+  // the default always makes the comparison false, so a feature without the number is left out, as before
+  if (['<', '>', '<=', '>='].includes(e[0])) return e.map((x, i) => (i && Array.isArray(x) && x[0] === 'get' && typeof x[1] === 'string' && x.length === 2 ? ['coalesce', x, ((e[0][0] === '<') === (i === 1)) ? 1e9 : -1e9] : coalesceNumbers(x)));
+  return e.map(coalesceNumbers);
+}
+function coalesceStyle(gl) {
+  try { (gl.getStyle().layers || []).forEach((l) => { if (!l.filter) return; const f = coalesceNumbers(l.filter); if (JSON.stringify(f) !== JSON.stringify(l.filter)) gl.setFilter(l.id, f); }); } catch (e) {}
+}
 function webglOK() { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } }
 function osmLayer() { return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: ATTR_OSM }); }
 // Add the base layer to a Leaflet map: vector OpenFreeMap when possible, OSM raster otherwise
@@ -3046,6 +3132,7 @@ function setBase(m, done, small) {
     layer.addTo(m);
     const gl = layer.getMaplibreMap();
     gl.on('load', () => { ok = true; });
+    gl.once('style.load', () => coalesceStyle(gl));
     gl.on('error', (e) => { console.warn('basemap', e && e.error && e.error.message); if (!ok && !(e && e.sourceId)) swap(); });
     const swap = () => { if (ok || layer._swapped || !alive()) return; layer._swapped = true; try { m.removeLayer(layer); } catch (x) {} if (m === map) usingOSM = true; fallback(); };
     // round 8: while onboarding (and its 3D scenes) shows, the map is hidden and the GPU is busy, so keep waiting
@@ -3084,7 +3171,7 @@ function renderMarkers() {
   const far = false; // round 4: Fix shows full discs at every zoom, as in frame C1
   const photo = mapMode === 'discover';
   // Greedy pixel clustering, the selected item never clusters
-  const pts = mapItems.map((it) => ({ it, p: map.project([it.lat, it.lng], z) }));
+  const pts = mapItems.filter(hasPoint).map((it) => ({ it, p: map.project([it.lat, it.lng], z) })); // C1: no marker without a real point
   const groups = [];
   const R = map.getZoom() >= map.getMaxZoom() - 0.01 ? 0 : far ? 16 : 44; // at maximum zoom every pin stands on its own
   pts.forEach((o) => {
@@ -3158,6 +3245,7 @@ function flashHint() {
   clearTimeout(hintTimer);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const h = $('#mapui .pill-hint'); if (!h || !map) return;
+    if (SBAR) { h.classList.add('hide'); hintOn = false; return; } // round 11 (P12): never over the search bar's results
     const t = hintText(); if (!t) { h.classList.add('hide'); hintOn = false; return; }
     h.textContent = t; h.classList.remove('hide'); hintOn = true; layoutLabels(); // tags under the hint move or hide
     hintTimer = setTimeout(() => { hintOn = false; const x = $('#mapui .pill-hint'); if (x) x.classList.add('hide'); setTimeout(layoutLabels, 380); }, 2000);
@@ -3194,6 +3282,7 @@ function flyToClear(latlng, zoom, opts) {
 }
 function fitItems(items, opts) {
   opts = opts || {};
+  items = items.filter(hasPoint);
   const c = opts.centre || (mapMode === 'buzz' ? buzzCentre() : centre());
   const useCircle = opts.circle !== false && !((mapMode === 'buzz' || mapMode === 'search' || mapMode === 'sbar') && items.length);
   let b;
@@ -3361,8 +3450,10 @@ function renderMapUI(opts) {
     } else {
       if (sb) html += '<div class="peek" style="bottom:calc(var(--nav-h) + 12px)"><div class="ti">Nothing found for \u201c' + esc(SBAR.q.trim()) + '\u201d</div><div class="sub">Try a road, a place or a word like pothole.</div></div>';
       else {
-      const empty = lens === 'buzz' ? (outside ? 'Nothing new in Bandra West’s Buzz' : 'Nothing new in Buzz today') : lens === 'fix' ? 'No open Fix pins within 1.5 km' : 'No events or deals within 1.5 km';
-      html += '<div class="peek" style="bottom:calc(var(--nav-h) + 12px)"><div class="ti">' + esc(empty) + '</div><div class="sub">Everything within 1.5 km is still on the map.</div><button type="button" class="btn primary press" style="margin-top:12px" data-act="see-around">See everything around you</button></div>';
+      const empty = lens === 'buzz' ? (outside ? 'Nothing new in Bandra West’s Buzz' : 'Nothing new in Buzz today') : lens === 'fix' ? 'No problems posted near you yet' : 'No events or deals within 1.5 km';
+      // round 11: the Fix map says it in one plain line, and the nav plus is the action
+      if (lens === 'fix') html += '<div class="peek fixnone" style="bottom:calc(var(--nav-h) + 12px)" role="status"><div class="ti">' + esc(empty) + '</div></div>';
+      else html += '<div class="peek" style="bottom:calc(var(--nav-h) + 12px)"><div class="ti">' + esc(empty) + '</div><div class="sub">Everything within 1.5 km is still on the map.</div><button type="button" class="btn primary press" style="margin-top:12px" data-act="see-around">See everything around you</button></div>';
       }
     }
   }
@@ -3377,7 +3468,7 @@ function renderMapUI(opts) {
   }
   if (opts.fit) {
     const bottom = cardsBottom();
-    if (cards && !cardsShut() && S.buzzIndex > 0 && items[S.buzzIndex]) flyToClear([items[S.buzzIndex].lat, items[S.buzzIndex].lng], 16.25, { bottom, instant: true });
+    if (cards && !cardsShut() && S.buzzIndex > 0 && items[S.buzzIndex] && hasPoint(items[S.buzzIndex])) flyToClear([items[S.buzzIndex].lat, items[S.buzzIndex].lng], 16.25, { bottom, instant: true });
     else fitItems(items, { bottom: bottom - 12, instant: !!opts.instant });
   }
   flashHint();
@@ -3408,7 +3499,7 @@ function toggleCards() {
   pill.innerHTML = '<span>' + mapItems.length + '</span>' + icon(shut ? 'chevU' : 'chevD', 24);
   placeCardPill(); syncToastSpot();
   if (shut) { S.selected = null; renderMarkers(); }
-  else { const it = mapItems[S.buzzIndex || 0]; if (it) { S.selected = it.id; renderMarkers(); scrollCarouselTo(S.buzzIndex || 0, true); flyToClear([it.lat, it.lng], Math.max(map.getZoom(), 16), { bottom: cardsBottom() }); } }
+  else { const it = mapItems[S.buzzIndex || 0]; if (it) { S.selected = it.id; renderMarkers(); scrollCarouselTo(S.buzzIndex || 0, true); if (hasPoint(it)) flyToClear([it.lat, it.lng], Math.max(map.getZoom(), 16), { bottom: cardsBottom() }); } }
   setTimeout(layoutLabels, 280);
 }
 // Toasts move above the cards while they show, so they never cover See pin
@@ -3427,18 +3518,18 @@ function kindBadge(it, size) {
 }
 function itemMeta(it) {
   const road = (it.road || '').split(',')[0];
-  const d = fmtDist(it.dist != null ? it.dist : distM(centre(), it));
+  const d = distTxt(it) || 'location approximate';
   if (it.kind === 'event') return road + ', ' + d + ', ' + low(whenOf(it));
   if (it.kind === 'deal') return road + ', ' + d + ', ' + low(fmtTill(it.till));
   if (it.kind === 'notice') return road + ', ' + d + ', ' + low(fmtDay(it.start));
   if (it.kind === 'place') return it.type + ', ' + (it.road || '') + ', ' + d;
-  return road + ', ' + d + ', ' + fmtPosted(it.at);
+  return road + ', ' + d + ', ' + postedOf(it);
 }
 // The third line of a map card: when it is on, or for a problem only its latest step
 function cardWhen(it) {
   if (it.kind === 'event') return ['gather', whenShort(it)];
   if (it.kind === 'deal') return ['tag', fmtTill(it.till)];
-  if (it.kind === 'notice') return ['clock', whenShort(it)];
+  if (it.kind === 'notice') return it.news === 'opening' ? ['gather', openingWhen(it)] : ['clock', whenShort(it)];
   if (it.kind === 'ask') return ['clock', 'Posted ' + low(fmtDay(it.at)) + (dayDiff(it.at) === 0 ? ', ' + fmtTimeShort(it.at) : '')];
   if (it.kind === 'problem') {
     const w = it.ward || { state: 'none' };
@@ -3447,16 +3538,16 @@ function cardWhen(it) {
     if (w.state === 'progress') return ['ward', 'Ward working on it ' + fmtDate(w.at)];
     return ['ward', 'Ward acknowledged ' + fmtDate(w.at)];
   }
-  return ['clock', fmtPosted(it.at)];
+  return ['clock', postedOf(it)];
 }
-function cardWhere(it) { const pl = it.placeId && placeById(it.placeId); return pl ? pl.name + (pl.road ? ', ' + pl.road : '') : (it.road || ''); }
+function cardWhere(it) { const pl = it.placeId && placeById(it.placeId); return (pl ? pl.name + (pl.road ? ', ' + pl.road : '') : (it.road || '')) + (hasPoint(it) ? '' : ', location approximate'); }
 // Buzz ends: a last card after item 12 (locked decision), not counted in the pill
 function buzzEndCard(n) {
   return '<div class="mcard mend" data-idx="' + n + '" role="group" aria-label="End of Buzz"><div class="mendtx"><div class="mti">That\u2019s today\u2019s Buzz</div><div class="mdist">' + n + ' ' + (n === 1 ? 'thing' : 'things') + ' within 1.5 km</div></div><button type="button" class="seepin press" data-act="see-around">See everything around you</button></div>';
 }
 function lensCard(it, i, n) {
   const k = KIND[it.kind], ph = it.photos && it.photos[0];
-  const d = fmtDist(it.dist != null ? it.dist : distM(mapMode === 'buzz' ? buzzCentre() : centre(), it));
+  const d = distTxt(it, mapMode === 'buzz' ? buzzCentre() : centre());
   const w = cardWhen(it);
   const pic = ph ? '<span class="mph" style="' + bg(ph) + '"></span>' : '<span class="mph tint" style="--k:' + k.hex + '">' + icon(k.glyph, 22) + '</span>';
   return '<div class="mcard press" data-idx="' + i + '" data-id="' + it.id + '" data-act="open" role="group" aria-label="' + esc(k.name + ', ' + it.title) + '">'
@@ -3500,6 +3591,7 @@ function onCarouselSettle(car, items) {
   const it = items[best];
   if (!it) { S.selected = null; renderMarkers(); fitItems(items, { bottom: cardsBottom() - 12 }); return; } // the end card: show the whole Buzz
   S.selected = it.id; renderMarkers();
+  if (!hasPoint(it)) return; // C1: no marker to fly to, the map stays where it is
   flyToClear([it.lat, it.lng], Math.max(map.getZoom(), 16.25), { bottom: cardsBottom() });
 }
 
@@ -3508,7 +3600,7 @@ function onCarouselSettle(car, items) {
 const NEAR_PX = 50;
 function pinsNear(it) {
   const z = map.getZoom(), p0 = map.project([it.lat, it.lng], z);
-  return mapItems.filter((x) => x.id === it.id || map.project([x.lat, x.lng], z).distanceTo(p0) <= NEAR_PX);
+  return mapItems.filter((x) => x.id === it.id || (hasPoint(x) && map.project([x.lat, x.lng], z).distanceTo(p0) <= NEAR_PX));
 }
 function onMarkerTap(it) {
   vibrate();
@@ -3521,11 +3613,7 @@ function onMarkerTap(it) {
   openPeek(it);
 }
 function onClusterTap(items, m) {
-  if (mapMode === 'around') { // every pin in the cluster, plus any others within 50 px of it
-    const ids = new Set(items.map((x) => x.id)); const out = items.slice();
-    items.forEach((x) => pinsNear(x).forEach((y) => { if (!ids.has(y.id)) { ids.add(y.id); out.push(y); } }));
-    openPinList(out); return;
-  }
+  if (mapMode === 'around') { openPinList(items); return; } // round 11 (C2): only the cluster's own pins, so its number matches the sheet
   const b = L.latLngBounds(items.map((i) => [i.lat, i.lng]));
   if (map.getZoom() < 18.5 && b.getNorthEast().distanceTo(b.getSouthWest()) > 3) { map.flyToBounds(b, { padding: [90, 90], maxZoom: Math.min(19, map.getZoom() + 2.5), duration: .5 }); return; }
   openClusterPeek(items);
@@ -3533,6 +3621,7 @@ function onClusterTap(items, m) {
 // The small list sheet: kind icon, first-line title, place. A row opens the detail page; back returns to the sheet.
 function openPinList(items) {
   const c = centre();
+  items = items.slice().sort((a, b) => distM(c, a) - distM(c, b)); // nearest first (round 11, C2)
   const rows = items.map((it) => {
     const k = KIND[it.kind], title = it.kind === 'place' ? it.name : it.title;
     const where = it.kind === 'place' ? it.type + ', ' + it.road : cardWhere(it);
@@ -3551,12 +3640,12 @@ function openPeek(it) {
   const title = it.kind === 'place' ? it.name : it.title;
   let body = '';
   if (it.kind === 'problem' && it.photos && it.photos[0]) body += '<div class="ph" style="' + bg(it.photos[0]) + '"></div>';
-  if (it.kind === 'place') { const ev = allItems().filter((x) => x.placeId === it.id && visible(x)); body += '<div class="quote">' + esc(it.about || '') + (ev.length ? '<div class="when">' + ev.length + ' ' + (ev.length === 1 ? 'event or deal' : 'events and deals') + ' coming up</div>' : '<div class="when">' + esc(it.hours || '') + '</div>') + '</div>'; }
+  if (it.kind === 'place') { const ev = allItems().filter((x) => x.placeId === it.id && visible(x)); body += '<div class="quote">' + esc(it.about || '') + (ev.length ? '<div class="when">' + kindCount(ev) + ' coming up</div>' : '<div class="when">' + esc(it.hours || '') + '</div>') + '</div>'; }
   else if (it.body) {
-    const when = it.kind === 'event' ? rangeOf(it) : it.kind === 'deal' ? fmtTill(it.till, true) : it.kind === 'notice' ? rangeOf(it) : fmtPosted(it.at).replace(/^./, (c) => c.toUpperCase());
+    const when = it.kind === 'event' ? rangeOf(it) : it.kind === 'deal' ? fmtTill(it.till, true) : it.kind === 'notice' ? rangeOf(it) : postedOf(it).replace(/^./, (c) => c.toUpperCase());
     body += '<div class="quote">' + esc(it.body) + '<div class="when">' + esc(when) + '</div></div>';
   }
-  const sub = (it.kind === 'place' ? it.type + ', ' + it.road : it.road) + ', ' + fmtDist(distM(mapMode === 'buzz' ? buzzCentre() : centre(), it));
+  const sub = (it.kind === 'place' ? it.type + ', ' + it.road : it.road) + ', ' + (distTxt(Object.assign({}, it, { dist: null }), mapMode === 'buzz' ? buzzCentre() : centre()) || 'location approximate');
   const p = el('<div class="peek" style="bottom:calc(var(--nav-h) + 12px)" role="dialog" aria-label="' + esc(title) + '"><div class="top"><span class="kind">' + k.name + '</span><button type="button" class="x press" data-act="close-peek" aria-label="Close">' + icon('close', 16) + '</button></div><div class="ti">' + esc(title) + '</div><div class="sub">' + esc(sub) + '</div>' + body + '<button type="button" class="go press" data-act="open" data-id="' + it.id + '" aria-label="Open ' + esc(title) + '">' + icon('chevR', 20) + '</button></div>');
   ui.appendChild(p);
   const h = p.offsetHeight;
@@ -3595,7 +3684,7 @@ function replies(id) { const n = commentsFor(id).length; return n === 0 ? 'No re
 function railHTML(it) {
   // Posted / Ward / Verification (Final v3 civic ledger). Dates, never durations.
   // Outside Bandra West there is no ward to track it: just Posted.
-  if (it.outside) return '<div class="rail solo"><div class="cols"><div><b>Posted</b><span>' + fmtDate(it.at) + ', ' + fmtTime(it.at) + '</span></div></div></div>';
+  if (it.outside) return '<div class="rail solo"><div class="cols"><div><b>Posted</b><span>' + fmtAt(it) + '</span></div></div></div>';
   const w = it.ward || { state: 'none' };
   const wardTxt = w.state === 'none' ? 'Not acknowledged' : w.state === 'ack' ? 'Acknowledged ' + fmtDate(w.at) : w.state === 'progress' ? 'In progress ' + fmtDate(w.at) : 'Fixed ' + fmtDate(w.at) + ', ' + fmtTime(w.at);
   const verTxt = w.state === 'fixed' ? it.verifiedN + ' verified' : 'Not open yet';
@@ -3604,24 +3693,26 @@ function railHTML(it) {
   const n2 = w.state === 'none' ? 'idle' : w.state === 'fixed' ? 'done' : 'warm';
   const n3 = w.state === 'fixed' ? 'open' : 'idle';
   return '<div class="rail"><div class="track"><span class="node done">' + icon('send', 14) + '</span><span class="seg ' + seg1 + '"></span><span class="node ' + n2 + '">' + icon('ward', 14) + '</span><span class="seg ' + seg2 + '"></span><span class="node v ' + n3 + '">' + icon('checkcircle', 14) + '</span></div>'
-    + '<div class="cols"><div><b>Posted</b><span>' + fmtDate(it.at) + ', ' + fmtTime(it.at) + '</span></div><div class="c"><b>Ward</b><span>' + wardTxt + '</span></div><div class="r"><b>Verification</b><span>' + verTxt + '</span></div></div></div>';
+    + '<div class="cols"><div><b>Posted</b><span>' + fmtAt(it) + '</span></div><div class="c"><b>Ward</b><span>' + wardTxt + '</span></div><div class="r"><b>Verification</b><span>' + verTxt + '</span></div></div></div>';
 }
 
 function itemCard(it, opts) {
   opts = opts || {};
   const title = it.kind === 'place' ? it.name : it.title;
-  const right = it.kind === 'event' ? fmtDay(it.start) : it.kind === 'deal' ? fmtTill(it.till) : it.at ? fmtDate(it.at) + ', ' + fmtTime(it.at) : '';
+  // round 11 (P2): an event card says its date once, in its when line, not again in the header
+  // ... and a real item's published date is on its source line, so the header does not repeat it
+  const right = it.kind === 'event' ? '' : it.kind === 'deal' ? fmtTill(it.till) : it.src && it.src.date ? '' : it.at ? fmtAt(it) : '';
   const th = THUMB_KINDS[it.kind];
   let h = '<button type="button" class="card press' + (th ? ' thumbed' : '') + '" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">'
     + (th ? '<div class="c-head">' + thumbHTML(it, 'c-thumb') + '<div class="c-hx">' : '')
-    + '<div class="c-top"><span class="road">' + esc(it.road) + '</span><span class="date">' + esc(right) + '</span></div>'
+    + '<div class="c-top"><span class="road">' + esc(it.road + (hasPoint(it) ? '' : ', location approximate')) + '</span><span class="date">' + esc(right) + '</span></div>'
     + '<div class="c-title">' + esc(title) + '</div>' + (th ? '</div></div>' : '');
   if (!th && it.photos && it.photos[0]) h += '<div class="c-photo" style="' + bg(it.photos[0]) + '"></div>';
   if (isPaused(it)) h += '<div class="c-line paused">' + icon('info', 16) + 'Paused</div>';
   if (it.kind === 'problem') h += railHTML(it);
   else if (it.kind === 'event') h += '<div class="c-line">' + icon('gather', 16) + rangeOf(it) + '</div>' + (it.interestedN ? '<div class="c-line">' + icon('checkcircle', 16) + it.interestedN + ' interested</div>' : '');
   else if (it.kind === 'deal') h += '<div class="c-line">' + icon('clock', 16) + fmtTill(it.till, true) + '</div>';
-  else if (it.kind === 'notice') h += '<div class="c-line">' + icon('clock', 16) + rangeOf(it) + '</div>';
+  else if (it.kind === 'notice') h += it.news === 'opening' ? '<div class="c-line">' + icon('gather', 16) + openingWhen(it) + '</div>' : '<div class="c-line">' + icon('clock', 16) + rangeOf(it) + '</div>';
   else if (it.kind === 'ask') h += '<div class="c-body">' + esc(it.body) + '</div><div class="c-line">' + icon('bubble', 16) + replies(it.id) + '</div>';
   return h + srcSpan(it, 'c-line') + '</button>';
 }
@@ -3657,17 +3748,17 @@ function buzzList() {
 function rowHTML(it, nested) {
   const k = KIND[it.kind];
   let meta = '';
-  if (it.kind === 'problem' && it.outside) meta = icon('clock', 16) + 'Posted ' + fmtPosted(it.at);
-  else if (it.kind === 'problem') { const w = it.ward.state; meta = w === 'fixed' ? icon('checkcircle', 16) + 'Fixed, ' + it.verifiedN + ' verified' : w === 'progress' ? icon('ward', 16) + 'In progress' : w === 'ack' ? icon('ward', 16) + 'Ward acknowledged' : icon('clock', 16) + 'Posted ' + fmtPosted(it.at); }
+  if (it.kind === 'problem' && it.outside) meta = icon('clock', 16) + 'Posted ' + postedOf(it);
+  else if (it.kind === 'problem') { const w = it.ward.state; meta = w === 'fixed' ? icon('checkcircle', 16) + 'Fixed, ' + it.verifiedN + ' verified' : w === 'progress' ? icon('ward', 16) + 'In progress' : w === 'ack' ? icon('ward', 16) + 'Ward acknowledged' : icon('clock', 16) + 'Posted ' + postedOf(it); }
   else if (it.kind === 'event') meta = icon('gather', 16) + whenOf(it);
   else if (it.kind === 'deal') meta = icon('clock', 16) + fmtTill(it.till, true);
-  else if (it.kind === 'notice') meta = icon('clock', 16) + rangeOf(it);
+  else if (it.kind === 'notice') meta = it.news === 'opening' ? icon('gather', 16) + openingWhen(it) : icon('clock', 16) + rangeOf(it);
   else if (it.kind === 'place' && it.isNew) meta = icon('gather', 16) + newText(it);
   else if (it.kind === 'ask') meta = icon('bubble', 16) + replies(it.id);
   const road = it.kind === 'place' ? it.type + ', ' + it.road : it.road;
   const lead = THUMB_KINDS[it.kind] ? thumbHTML(it, 'r-thumb') : nested ? '' : '<span class="rdisc" style="background:' + k.hex + '">' + icon(k.glyph, 20) + '</span>';
   return '<button type="button" class="row press' + (nested ? ' nested' : '') + '" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + lead
-    + '<span class="rtx">' + (nested ? '<span class="rkind">' + k.name + '</span>' : '<span class="rroad">' + esc(road) + ', ' + fmtDist(it.dist) + '</span>') + '<span class="rti">' + esc(it.kind === 'place' ? it.name : it.title) + '</span>' + (meta ? '<span class="rme">' + meta + '</span>' : '') + srcSpan(it, 'rme') + '</span>' + (nested ? icon('chevR', 18) : '') + '</button>';
+    + '<span class="rtx">' + (nested ? '<span class="rkind">' + k.name + '</span>' : '<span class="rroad">' + esc(road) + ', ' + (distTxt(it) || 'location approximate') + '</span>') + '<span class="rti">' + esc(it.kind === 'place' ? it.name : it.title) + '</span>' + (meta ? '<span class="rme">' + meta + '</span>' : '') + srcSpan(it, 'rme') + '</span>' + (nested ? icon('chevR', 18) : '') + '</button>';
 }
 function aroundList() {
   const items = lensItems('around'); // already in the shared order
@@ -3685,7 +3776,7 @@ function aroundList() {
     if (!g) { h += rowHTML(it); return; }
     if (done[it.placeId]) return; done[it.placeId] = 1;
     const p = places.find((x) => x.id === it.placeId);
-    h += '<div class="group" data-group="' + p.id + '" data-kind="' + it.kind + '"><div class="ghead"><button type="button" class="row press" data-act="open" data-id="' + p.id + '"><span class="rdisc" style="background:' + KIND.place.hex + '">' + icon('dot', 20) + '</span><span class="rtx"><span class="rroad">' + esc(p.road) + ', ' + fmtDist(p.dist) + '</span><span class="rti">' + esc(p.name) + '</span><span class="rme">' + g.length + ' ' + (g.length === 1 ? (g[0].kind === 'deal' ? 'deal' : 'event') : 'events and deals') + '</span></span></button><button type="button" class="gtoggle press" data-act="toggle-group" data-id="' + p.id + '" aria-expanded="true" aria-label="Show or hide what is on at ' + esc(p.name) + '">' + icon('chevU', 20) + '</button></div><div class="gbody">' + g.map((e) => rowHTML(e, true)).join('') + '</div></div>';
+    h += '<div class="group" data-group="' + p.id + '" data-kind="' + it.kind + '"><div class="ghead"><button type="button" class="row press" data-act="open" data-id="' + p.id + '"><span class="rdisc" style="background:' + KIND.place.hex + '">' + icon('dot', 20) + '</span><span class="rtx"><span class="rroad">' + esc(p.road) + ', ' + (distTxt(p) || 'location approximate') + '</span><span class="rti">' + esc(p.name) + '</span><span class="rme">' + kindCount(g) + '</span></span></button><button type="button" class="gtoggle press" data-act="toggle-group" data-id="' + p.id + '" aria-expanded="true" aria-label="Show or hide what is on at ' + esc(p.name) + '">' + icon('chevU', 20) + '</button></div><div class="gbody">' + g.map((e) => rowHTML(e, true)).join('') + '</div></div>';
   });
   // round 10: new openings are places, so they join the list as rows after the posts, nearest first
   places.filter((p) => p.isNew && !done[p.id]).sort((x, y) => x.dist - y.dist).forEach((p) => { h += rowHTML(p); });
@@ -3695,13 +3786,14 @@ function aroundList() {
 
 function fixList() {
   const items = lensItems('fix');
-  let h = listHead(items.length + ' ' + (items.length === 1 ? 'pin' : 'pins'), 'within 1.5 km');
+  // Round 11: with no pins, one plain line; the nav plus is the action
+  let h = items.length ? listHead(items.length + ' ' + (items.length === 1 ? 'pin' : 'pins'), 'within 1.5 km') : '<div class="lhead"><div class="t-h2 fixnone">No problems posted near you yet</div></div>';
   if (isOutside()) { h += '<p class="plainline">Fixes are tracked in Bandra West only, for now.</p>'; if (!items.length) return h; }
   else h += wardLine('lwardline');
   const hidden = ITEMS.concat(S.mine).filter((x) => x.kind === 'problem' && S.flagged[x.id] && near(x));
   hidden.forEach((x) => { h += '<button type="button" class="hiddenrow press" data-act="unflag" data-id="' + x.id + '"><b>Pin hidden.</b><span>We are reviewing it. Tap to undo.</span></button>'; });
   if (S.offline) h += offlineBlock();
-  if (!items.length) return h + emptyState('No open pins within 1.5 km', 'When a neighbour posts a problem here, it shows up in this list.', 'post', 'Post a problem');
+  if (!items.length) return h;
   return h + '<div class="cards">' + items.map((it) => itemCard(it)).join('') + '</div><div class="listend">That’s every Fix pin within 1.5 km</div>';
 }
 
@@ -3728,7 +3820,7 @@ function discoverList() {
   if (!list.length) return h + emptyState(DISC.tab === 'event' ? 'No events within 1.5 km' : 'No deals within 1.5 km', 'Try all of Bandra West.', 'disc-all', 'Show all of Bandra West');
   h += '<div class="drows">' + list.map((it) => {
     const pl = placeById(it.placeId);
-    return '<button type="button" class="drow press" data-act="open" data-id="' + it.id + '">' + thumbHTML(it, 'd-thumb') + '<span class="dtx"><span class="dpl">' + esc(pl ? pl.name : it.road) + (it.sponsored ? '<em>Sponsored</em>' : '') + '</span><span class="dti">' + esc(it.title) + '</span><span class="dme">' + icon(it.kind === 'event' ? 'gather' : 'clock', 16) + '<span>' + esc(it.kind === 'event' ? whenOf(it) : fmtTill(it.till, true)) + '</span><i>' + fmtDist(it.dist) + '</i></span>' + srcSpan(it, 'dme') + '</span></button>';
+    return '<button type="button" class="drow press" data-act="open" data-id="' + it.id + '">' + thumbHTML(it, 'd-thumb') + '<span class="dtx"><span class="dpl"><span class="dplx">' + esc((pl ? pl.name : it.road) + (hasPoint(it) ? '' : ', location approximate')) + '</span>' + (it.sponsored ? '<em>Sponsored</em>' : '') + '</span><span class="dti">' + esc(it.title) + '</span><span class="dme">' + icon(it.kind === 'event' ? 'gather' : 'clock', 16) + '<span>' + esc(it.kind === 'event' ? whenOf(it) : fmtTill(it.till, true)) + '</span><i>' + distTxt(it) + '</i></span>' + srcSpan(it, 'dme') + '</span></button>';
   }).join('') + '</div>';
   return h;
 }
@@ -3803,7 +3895,7 @@ function approxRow(it) { return it.approx ? '<div class="dline muted">' + icon('
 function priceRow(it) { return it.price ? '<div class="dline">' + icon('tag', 18) + esc(it.price) + '</div>' : ''; }
 function sampleRow(it) { return it.sample ? '<div class="dline muted">' + icon('info', 18) + 'Sample post for this test</div>' : ''; }
 function actionBar(main, side, cls) { return '<div class="abar' + (cls ? ' ' + cls : '') + '">' + main + (side || '') + '</div>'; }
-function mapCard(it, label) { return '<div class="minimap"><div class="mm" data-minimap="' + it.id + '"></div><span class="tag">' + esc(label) + '</span></div>'; }
+function mapCard(it, label) { if (!hasPoint(it)) return ''; return '<div class="minimap"><div class="mm" data-minimap="' + it.id + '"></div><span class="tag">' + esc(label) + '</span></div>'; }
 
 function renderDetail(L) {
   const it = itemById(L.data.id); if (!it) return;
@@ -3858,7 +3950,7 @@ function noticePage(it) {
   return '<div class="scroll">' + headBar('Notice', it) + heroBlock(it)
     + '<div class="dbody">' + titleBlock(it)
     + (it.body ? '<p class="dtext">' + esc(it.body) + '</p>' : '')
-    + '<div class="dline">' + icon('clock', 18) + esc(rangeOf(it)) + '</div>'
+    + (it.news === 'opening' ? (placeById(it.placeId) && placeById(it.placeId).opened ? '<div class="dline">' + icon('clock', 18) + esc(newText(placeById(it.placeId))) + '</div>' : '') : '<div class="dline">' + icon('clock', 18) + esc(rangeOf(it)) + '</div>')
     // a real notice carries its source and date instead of a posted time
     + (it.src ? approxRow(it) + srcRow(it) : '<div class="dline">' + icon('send', 18) + 'Posted ' + esc(fmtPosted(it.at)) + '</div>')
     + (it.source ? '<div class="dline muted">' + icon('info', 18) + esc(it.source) + '</div>' : '') + sampleRow(it)
@@ -3879,10 +3971,10 @@ function eventPage(it) {
     + '<div class="dbody">' + titleBlock(it)
     + (it.interestedN ? '<div class="dline green">' + icon('check', 18) + '<span data-int-count>' + it.interestedN + ' interested</span></div>' : '<span data-int-count hidden>0</span>')
     + (it.body ? '<p class="dtext">' + esc(it.body) + '</p>' : '')
-    + (isEv ? '<div class="dline">' + icon('gather', 18) + esc(fmtDay(it.start, true) + (it.end && dayDiff(it.end) !== dayDiff(it.start) ? ' to ' + fmtDay(it.end, true) : '')) + '</div>' + (timeRowOf(it) ? '<div class="dline">' + icon('clock', 18) + esc(timeRowOf(it)) + '</div>' : '')
+    + (isEv ? '<div class="dline">' + icon('gather', 18) + esc(daysOf(it)) + '</div>' + (timeRowOf(it) ? '<div class="dline">' + icon('clock', 18) + esc(timeRowOf(it)) + '</div>' : '')
       : '<div class="dline">' + icon('clock', 18) + esc(fmtTill(it.till)) + '</div>')
     + priceRow(it)
-    + '<button type="button" class="dline dirline press" data-act="directions" data-id="' + it.id + '">' + icon('directions', 18) + '<span>Directions</span>' + icon('chevR', 16) + '</button>'
+    + (hasPoint(it) ? '<button type="button" class="dline dirline press" data-act="directions" data-id="' + it.id + '">' + icon('directions', 18) + '<span>Directions</span>' + icon('chevR', 16) + '</button>' : '')
     + approxRow(it) + srcRow(it)
     + (it.source ? '<div class="dline muted">' + icon('info', 18) + esc(it.source) + '</div>' : '') + sampleRow(it)
     + mapCard(it, pl ? pl.name : it.road) + commentsBlock(it) + '</div></div>'
@@ -3920,12 +4012,12 @@ function openPlace(id) {
       + (pl.isNew ? '<div class="dline">' + icon('gather', 18) + esc(newText(pl)) + '</div>' : '')
       + '<div class="dline">' + icon('pin', 18) + esc(pl.addr || pl.road) + '</div>' + approxRow(pl)
       + (pl.hours ? '<div class="dline">' + icon('clock', 18) + esc(pl.hours) + '</div>' : '') + priceRow(pl)
-      + (intr ? '<div class="dline green">' + icon('check', 18) + intr + ' interested across ' + evs.length + ' ' + (evs.length === 1 ? (evs[0].kind === 'deal' ? 'deal' : 'event') : 'events and deals') + ' here</div>' : '')
+      + (intr ? '<div class="dline green">' + icon('check', 18) + intr + ' interested across ' + kindCount(evs) + ' here</div>' : '')
       + (pl.about ? '<p class="dtext">' + esc(pl.about) + '</p>' : '') + srcRow(pl) + (pl.sample ? '<div class="dline muted">' + icon('info', 18) + 'Sample place for this test</div>' : '') + mapCard(pl, pl.name)
       + '<div class="ccard"><div class="chead"><span class="t-h3">Events and deals</span></div><div class="seg2 small"><button type="button" class="' + (L.data.tab === 'up' ? 'on' : '') + '" data-act="place-tab" data-tab="up">Upcoming</button><button type="button" class="' + (L.data.tab === 'past' ? 'on' : '') + '" data-act="place-tab" data-tab="past">Past</button></div>'
-      + (list.length ? list.map((x) => '<button type="button" class="prow press" data-act="open" data-id="' + x.id + '"><span class="rkind">' + KIND[x.kind].name + '</span><span class="rti">' + esc(x.title) + '</span><span class="rme">' + icon(x.kind === 'event' ? 'gather' : 'clock', 16) + esc(x.kind === 'event' ? fmtWhen(x.start) : fmtTill(x.till, true)) + '</span></button>').join('') : '<p class="t-meta cnone">' + (L.data.tab === 'up' ? 'Nothing coming up here yet' : 'Nothing here yet') + '</p>') + '</div>'
+      + (list.length ? list.map((x) => '<button type="button" class="prow press" data-act="open" data-id="' + x.id + '"><span class="rkind">' + KIND[x.kind].name + '</span><span class="rti">' + esc(x.title) + '</span><span class="rme">' + icon(x.kind === 'event' ? 'gather' : 'clock', 16) + esc(x.kind === 'event' ? rangeOf(x) : x.kind === 'notice' ? (x.news === 'opening' ? 'Published ' + fmtDate(x.at) : rangeOf(x)) : fmtTill(x.till, true)) + '</span></button>').join('') : '<p class="t-meta cnone">' + (L.data.tab === 'up' ? 'Nothing coming up here yet' : 'Nothing here yet') + '</p>') + '</div>'
       + placeComments(pl) + '</div></div>'
-      + '<div class="abar"><button type="button" class="btn primary press" data-act="directions" data-id="' + pl.id + '">' + icon('directions', 18) + 'Directions</button>' + (pl.phone ? '<button type="button" class="circ press" data-act="call" data-id="' + pl.id + '" aria-label="Call ' + esc(pl.name) + '">' + icon('phone', 20) + '</button>' : '') + (pl.web ? '<button type="button" class="circ press" data-act="web" data-id="' + pl.id + '" aria-label="Open the website">' + icon('globe', 20) + '</button>' : '') + '</div>';
+      + (!hasPoint(pl) && !pl.phone && !pl.web ? '' : '<div class="abar">' + (hasPoint(pl) ? '<button type="button" class="btn primary press" data-act="directions" data-id="' + pl.id + '">' + icon('directions', 18) + 'Directions</button>' : '') + (pl.phone ? '<button type="button" class="circ press" data-act="call" data-id="' + pl.id + '" aria-label="Call ' + esc(pl.name) + '">' + icon('phone', 20) + '</button>' : '') + (pl.web ? '<button type="button" class="circ press" data-act="web" data-id="' + pl.id + '" aria-label="Open the website">' + icon('globe', 20) + '</button>' : '') + '</div>');
     const sc = L.el.querySelector('.scroll'); const y = sc ? sc.scrollTop : 0;
     L.el.innerHTML = h; const s2 = L.el.querySelector('.scroll'); if (s2) s2.scrollTop = y;
     const mm = L.el.querySelector('[data-minimap]'); if (mm) { if (L.mini) L.mini.remove(); L.mini = miniMap(mm, pl); }
@@ -4140,10 +4232,11 @@ function startPost() {
   const el = document.createElement('section');
   el.className = 'layer postlayer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Post a pin');
   el.innerHTML = '<div class="scrim" data-scrim></div><div class="spot-ui" hidden></div><div class="sheet postsheet"><div class="grab" data-grab aria-hidden="true"></div><div class="pbody"></div></div>';
-  PL = { el, kind: 'sheet', isPost: true, guard: postGuard, onClose: () => { P = null; PL = null; spotOff(); } };
+  PL = { el, kind: 'sheet', isPost: true, guard: postGuard, onClose: () => { P = null; PL = null; spotOff(); $('#app').classList.remove('posting'); } };
   el.querySelector('[data-scrim]').addEventListener('click', () => closePost());
   sheetDrag(el.querySelector('.postsheet'), el.querySelector('[data-grab]'), () => closePost());
   pushLayer(PL);
+  $('#app').classList.add('posting'); // round 11 (P11): no lens cards or marker tags under the spot map
   renderPost();
 }
 function closePost() { if (!P) return; P.closing = true; closeLayer(PL); }
@@ -4260,7 +4353,7 @@ function eventForm(isDeal) {
   if (P.own && P.ownState === 'code') {
     h += '<div class="lbl" style="margin-top:6px">Enter the code</div><p class="t-meta" style="margin:-4px 0 10px">Sent to the number on the place’s listing</p><label class="codebox" aria-label="Six digit code"><input data-pin="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" value="' + esc(P.code) + '">' + [0, 1, 2, 3, 4, 5].map((i) => '<span class="' + (i === P.code.length ? 'cur' : '') + '">' + esc(P.code[i] || '') + '</span>').join('') + '</label><button type="button" class="sendagain press" data-p="send-again">' + icon('refresh', 16) + 'Send again</button>';
   }
-  if (P.own && P.ownState === 'nobody') h += '<p class="t-label" style="margin:4px 0 8px">Nobody owns this place on PTP yet</p><button type="button" class="ownerbtn press" data-p="papers">' + icon('chevR', 16) + 'Are you the owner?</button>';
+  if (P.ownState === 'nobody') h += '<p class="t-label" style="margin:4px 0 8px">Nobody owns this place on PTP yet</p><button type="button" class="ownerbtn press" data-p="papers">' + icon('chevR', 16) + 'Are you the owner?</button>';
   if (!isDeal) {
     h += textBox('event');
     h += '<div class="lbl">Starts</div>' + dateField('start', 'Pick a day');
@@ -4533,7 +4626,9 @@ document.addEventListener('click', (e) => {
     case 'own': {
       if (P.own) { P.own = false; P.ownState = 'none'; P.code = ''; renderPost(); break; }
       P.own = true; markDirty(); const pl = placeById(P.placeId);
-      P.ownState = pl.claimed ? 'code' : 'nobody'; P.code = ''; renderPost();
+      P.ownState = pl.claimed ? 'code' : 'nobody'; P.code = '';
+      if (!pl.claimed) P.own = false; // round 11 (C4): nobody owns it, so the tick can't apply; the line and the link stay
+      renderPost();
       if (pl.claimed) toast('Code sent to the number on the listing');
       break;
     }
@@ -4632,7 +4727,7 @@ function parseQuery(q) {
   return { spot, kind, terms };
 }
 const SPOT_M = 400; // a road, area or place named in a query keeps results within about 400 m of it (or on that road)
-function nearSpot(spot, it) { return distM(spot, it) <= SPOT_M || normQ(it.road || '').includes(spot.n) || (spot.n2 && normQ(it.road || '').includes(spot.n2)); }
+function nearSpot(spot, it) { return (hasPoint(it) && distM(spot, it) <= SPOT_M) || normQ(it.road || '').includes(spot.n) || (spot.n2 && normQ(it.road || '').includes(spot.n2)); }
 function spotWord(spot) { return /road|marg|lane|promenade/i.test(spot.name) ? 'on ' + spot.name : 'in ' + spot.name; }
 function itemHay(it) { const pl = it.placeId && placeById(it.placeId); return normQ([it.title, it.body, it.road, it.cat, KIND[it.kind].name, it.niche, pl && pl.name].join(' ')); }
 
@@ -4660,8 +4755,9 @@ function openSearch() {
   return L;
 }
 function remember(q) { q = (q || '').trim(); if (q.length < 2) return; S.recent = [q].concat(S.recent.filter((x) => x.toLowerCase() !== q.toLowerCase())).slice(0, 6); save(); }
+function hasResults(r) { return !!(r.posts.length || r.places.length || r.close.length || r.spots.length); }
 function runSearch(L, q) {
-  remember(q);
+  if (hasResults(searchResults(q))) remember(q); // round 11 (P14): a search that found nothing isn't kept under Recent
   const inp = L.el.querySelector('input'); inp.value = q; L.data.q = q; L.el.querySelector('.sclear').hidden = !q;
   L.data.mode = 'results'; inp.blur(); renderSearch(L);
 }
@@ -4694,8 +4790,8 @@ function emptySearchHTML() {
 }
 function resultRow(it) {
   const isPl = it.kind === 'place';
-  const sub = isPl ? it.type + ', ' + it.road : (isPaused(it) ? 'Paused, ' : '') + KIND[it.kind].name + ', ' + (it.road || '').split(',')[0];
-  const txt = '<span class="smain">' + esc(isPl ? it.name : it.title) + '</span><span class="ssub">' + esc(sub) + '<i>' + fmtDist(it.dist != null ? it.dist : distM(centre(), it)) + '</i></span>';
+  const sub = (isPl ? it.type + ', ' + it.road : (isPaused(it) ? 'Paused, ' : '') + KIND[it.kind].name + ', ' + (it.road || '').split(',')[0]) + (hasPoint(it) ? '' : ', location approximate');
+  const txt = '<span class="smain">' + esc(isPl ? it.name : it.title) + '</span><span class="ssub">' + esc(sub) + '<i>' + distTxt(it) + '</i></span>';
   if (THUMB_KINDS[it.kind]) return '<button type="button" class="srow srow-t press" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + thumbHTML(it, 's-thumb') + '<span class="stx2">' + txt + '</span></button>';
   return '<button type="button" class="srow press" data-act="open" data-id="' + it.id + '" data-kind="' + it.kind + '">' + txt + '</button>';
 }
@@ -4748,7 +4844,7 @@ function suggestHTML(q, max) {
     if (o.kind === 'area' || o.kind === 'road') { ic = '<span class="sic plain">' + icon(o.kind === 'area' ? 'target' : 'mappin', 18) + '</span>'; title = o.name; sub = o.sub; attrs = 'data-run="' + esc(o.name) + '"'; }
     else if (o.kind === 'place') { ic = '<span class="sic" style="background:' + KIND.place.hex + '">' + icon('dot', 16) + '</span>'; title = o.name; sub = 'Place, ' + o.road; attrs = 'data-act="open" data-id="' + o.id + '"'; }
     else { ic = '<span class="sic" style="background:' + KIND[o.kind].hex + '">' + icon(KIND[o.kind].glyph, 16) + '</span>'; title = o.title; sub = KIND[o.kind].name + ', ' + (o.road || '').split(',')[0]; attrs = 'data-act="open" data-id="' + o.id + '"'; }
-    return '<button type="button" role="option" class="sugrow press" data-skind="' + o.kind + '" ' + attrs + '>' + ic + '<span class="stx"><span class="sm">' + hl(title, q) + '</span><span class="ss">' + esc(sub) + '</span></span><span class="t-meta">' + fmtDist(distM(c, o)) + '</span></button>';
+    return '<button type="button" role="option" class="sugrow press" data-skind="' + o.kind + '" ' + attrs + '>' + ic + '<span class="stx"><span class="sm">' + hl(title, q) + '</span><span class="ss">' + esc(sub) + '</span></span><span class="t-meta">' + (o.kind === 'area' || o.kind === 'road' ? fmtDist(distM(c, o)) : distTxt(Object.assign({}, o, { dist: null }), c)) + '</span></button>';
   }).join('') + '</div>';
 }
 
@@ -4776,7 +4872,7 @@ function searchResults(q) {
   const spots = knownSpots().filter((s) => { const n = normQ(q); return s.n.includes(n) || n.includes(s.n); }).slice(0, 3);
   // other places nearby with something on: only for place searches, or when nothing was found
   const placeLike = places.length > 0 || (pq.spot && !pq.terms.length && !pq.kind) || (!posts.length && !close.length);
-  const busy = !placeLike ? [] : withDist(allPlaces().filter((p) => !S.flagged[p.id] && !places.some((x) => x.id === p.id) && distM(ref, p) <= RADIUS && allItems().some((x) => x.placeId === p.id && visible(x))).map((p) => Object.assign({ kind: 'place' }, p)), c)
+  const busy = !placeLike ? [] : withDist(allPlaces().filter((p) => !S.flagged[p.id] && !places.some((x) => x.id === p.id) && hasPoint(p) && distM(ref, p) <= RADIUS && allItems().some((x) => x.placeId === p.id && visible(x))).map((p) => Object.assign({ kind: 'place' }, p)), c)
     .map((p) => Object.assign(p, { on: allItems().filter((x) => x.placeId === p.id && visible(x)) })).sort((a, b) => a.dist - b.dist).slice(0, 5);
   return { posts, places, spots, busy, close, miss, pq };
 }
@@ -4789,8 +4885,8 @@ function resultsHTML(r, q) {
   if (r.places.length) h += '<div class="sres"><div class="sgh">Places</div>' + r.places.map((p) => resultRow(p)).join('') + '</div>';
   if (!n && r.close.length) h += (r.miss ? '' : '<p class="snone smiss">Nothing has every word of \u201c' + esc(q.trim()) + '\u201d</p>') + '<div class="sres"><div class="sgh">Close matches' + (r.pq.spot ? ', nearest ' + esc(r.pq.spot.name) + ' first' : '') + '</div>' + r.close.map((it) => resultRow(it)).join('') + '</div>';
   if (r.spots.length) h += '<div class="sres"><div class="sgh">Areas and roads</div>' + r.spots.map((s) => { const a = nearestArea(s); return '<button type="button" class="srow press" data-area="' + a.id + '"><span class="smain">' + esc(s.name) + '</span><span class="ssub">' + esc(s.sub) + '<i>' + fmtDist(distM(centre(), s)) + '</i></span></button>'; }).join('') + '</div>';
-  if (!n && !r.close.length && !r.spots.length) h += '<p class="snone">Nothing found for \u201c' + esc(q.trim()) + '\u201d</p>';
-  if (r.busy.length) h += '<div class="sres"><div class="sgh">Nearby with something on</div>' + r.busy.map((p) => '<button type="button" class="srow press" data-act="open" data-id="' + p.id + '" data-kind="place"><span class="smain">' + esc(p.name) + '</span><span class="ssub">' + esc(p.on.length + ' ' + (p.on.length === 1 ? (p.on[0].kind === 'deal' ? 'deal' : 'event') : 'events and deals') + ', ' + p.road) + '<i>' + fmtDist(p.dist) + '</i></span></button>').join('') + '</div>';
+  if (!n && !r.close.length && !r.spots.length) h += '<p class="snone">' + (r.pq.kind === 'ask' && !r.pq.terms.length ? 'No asks near you yet' : 'Nothing found for \u201c' + esc(q.trim()) + '\u201d') + '</p>';
+  if (r.busy.length) h += '<div class="sres"><div class="sgh">Nearby with something on</div>' + r.busy.map((p) => '<button type="button" class="srow press" data-act="open" data-id="' + p.id + '" data-kind="place"><span class="smain">' + esc(p.name) + '</span><span class="ssub">' + esc(kindCount(p.on) + ', ' + p.road) + '<i>' + fmtDist(p.dist) + '</i></span></button>').join('') + '</div>';
   h += '<div class="sres"><button type="button" class="srow add press" data-addplace><span class="smain">Add a place</span><span class="ssub">Not on the map yet</span>' + icon('plus', 20) + '</button></div>';
   return h;
 }
@@ -4874,8 +4970,8 @@ function openSearchBar() {
 }
 function runBar(q, focusId) {
   if (!SBAR) return;
-  q = q.trim(); remember(q);
-  const r = searchResults(q);
+  q = q.trim();
+  const r = searchResults(q); if (hasResults(r) || focusId) remember(q);
   let items = r.posts.length || r.places.length ? r.posts.concat(r.places) : r.close;
   if (focusId && !items.some((x) => x.id === focusId)) { const it = anyById(focusId); if (it) items.unshift(it.kind ? it : Object.assign({ kind: 'place' }, it)); }
   items = withDist(items, centre());
@@ -4885,7 +4981,7 @@ function runBar(q, focusId) {
   const i = Math.max(0, focusId ? items.findIndex((x) => x.id === focusId) : 0);
   S.buzzIndex = i; S.selected = items[i] ? items[i].id : null;
   renderMapUI();
-  if (items.length) { const it = items[i]; if (i > 0) flyToClear([it.lat, it.lng], Math.max(map.getZoom(), 16.25), { bottom: cardsBottom(), instant: true }); else fitItems(items, { bottom: cardsBottom() - 12, instant: true }); }
+  if (items.length) { const it = items[i]; if (i > 0 && hasPoint(it)) flyToClear([it.lat, it.lng], Math.max(map.getZoom(), 16.25), { bottom: cardsBottom(), instant: true }); else fitItems(items, { bottom: cardsBottom() - 12, instant: true }); }
 }
 
 /* ---- 85-location.js ---- */
@@ -5185,7 +5281,7 @@ function hideSplash(wait) {
 // The denied-location snackbar: once per app open (per session), whenever current location isn't available
 function deniedSnack() {
   try { if (sessionStorage.getItem('ptp-locsnack')) return; sessionStorage.setItem('ptp-locsnack', '1'); } catch (e) {}
-  topSnack('Showing your saved location. Current location isn\u2019t available.', { action: 'Allow', onAction: allowLocation });
+  topSnack('Showing the location you picked. Current location isn\u2019t available.', { action: 'Allow', onAction: allowLocation });
 }
 // Every open after onboarding: resolve the location behind the splash (GPS waits 3 s at most), then show Buzz
 function openingSplash() {
@@ -5249,7 +5345,7 @@ function renderIntro() {
   const i = FLOW.step, s = INTRO[i], last = i === INTRO.length - 1;
   obSave('intro', { i });
   flowEl().innerHTML = '<div class="intro"><div class="status"></div><div class="itop">' + (i > 0 ? '<button type="button" class="circ press" data-f="prev" aria-label="Back">' + icon('chevL', 22) + '</button>' : '<span></span>') + '<button type="button" class="skipbtn press" data-f="skip">Skip to sign in</button></div>'
-    + '<div class="icopy"><h1 class="t-display">' + esc(s.title) + '</h1><p>' + esc(s.text) + '</p>' + (i === 0 ? '<p class="testline">This is a test version. Neighbour posts in it are samples.</p>' : '') + '</div>' + onb3dSlotHTML(i)
+    + '<div class="icopy"><h1 class="t-display">' + esc(s.title) + '</h1><p>' + esc(s.text) + '</p>' + (i === 0 ? '<p class="testline">' + (SAMPLES_ON ? 'This is a test version. Neighbour posts in it are samples.' : 'This is a test version.') + '</p>' : '') + '</div>' + onb3dSlotHTML(i)
     + '<div class="ibar"><div class="prog" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="' + (i + 1) + '" aria-label="Step ' + (i + 1) + ' of 4">' + INTRO.map((_, j) => '<span class="' + (j === i ? 'on' : '') + '"></span>').join('') + '</div>'
     + (last ? '<button type="button" class="getstarted press" data-f="start">Get started' + icon('arrow-right', 20) + '</button>' : '<button type="button" class="inext press" data-f="next" aria-label="Next">' + icon('arrow-right', 22) + '</button>') + '</div></div>';
   const root = $('.intro', flowEl()); let x0 = null;
@@ -5516,7 +5612,7 @@ function openNotDesigned(title) {
 
 /* About and privacy (10). Photo credits live in CREDITS.md in the repo (round 7 took the Credits row off). */
 function openAbout() {
-  openPage('<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">About and privacy</span></div><div class="scroll" style="top:100px;padding:0 20px 40px"><p class="t-body">Push The Pin shows what is happening within 1.5 km of where you are in Bandra West: problems on the road, events, deals, notices and asks from neighbours.</p><p class="t-body">Reading is open to everyone. Posting, comments, verifying and showing interest need an account. On posts and comments you show as *, never by name or number.</p><p class="t-body">A flag sends a post to Push The Pin for review. It is hidden for you straight away. Push The Pin decides what happens, not the people who flagged it.</p><p class="t-body muted">This is a test version. Problems, asks, residents\u2019 notices and comments in it are samples. Events, new openings and news are real, each with its source. There are no offers yet. Everything you do stays on this phone.</p></div>', { label: 'About and privacy' });
+  openPage('<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">About and privacy</span></div><div class="scroll" style="top:100px;padding:0 20px 40px"><p class="t-body">Push The Pin shows what is happening within 1.5 km of where you are in Bandra West: problems on the road, events, deals, notices and asks from neighbours.</p><p class="t-body">Reading is open to everyone. Posting, comments, verifying and showing interest need an account. On posts and comments you show as *, never by name or number.</p><p class="t-body">A flag sends a post to Push The Pin for review. It is hidden for you straight away. Push The Pin decides what happens, not the people who flagged it.</p><p class="t-body muted">' + (SAMPLES_ON ? 'This is a test version. Problems, asks, residents\u2019 notices and comments in it are samples. Events, new openings and news are real, each with its source.' : 'This is a test version. Events, new openings and news are real, each with its source. Problems, asks and comments are only the ones you post.') + ' There are no offers yet. Everything you do stays on this phone.</p></div>', { label: 'About and privacy' });
 }
 function openCredits() {
   const rows = (window.CREDITS || []).map((c) => '<div class="credit"><b>' + esc(c.title) + '</b><span>' + esc(c.author || 'Unknown author') + ', ' + esc(c.license) + '</span><a href="' + esc(c.page) + '" target="_blank" rel="noopener">' + esc(c.page.replace('https://', '')) + '</a></div>').join('');
@@ -5550,7 +5646,7 @@ function onb3dLoad() {
   return ONB3D.load;
 }
 function onb3dSlotHTML(i) {
-  return '<div class="scene" data-scene="' + i + '"><img class="fb" alt="' + esc(ONB3D_ALT[i]) + '" src="' + ((window.ONB3D_FB || [])[i] || '') + '"></div>';
+  return '<div class="scene" data-scene="' + i + '"><img class="fb" draggable="false" alt="' + esc(ONB3D_ALT[i]) + '" src="' + ((window.ONB3D_FB || [])[i] || '') + '"></div>';
 }
 function onb3dMount(slot, i) {
   const my = ++ONB3D.token;
@@ -5637,6 +5733,10 @@ window.__ptp = {
   mapItems: () => mapItems.map((x) => ({ id: x.id, kind: x.kind })), mapMode: () => mapMode,
   focus: (id, z) => { const it = anyById(id); map.setView([it.lat, it.lng], z, { animate: false }); },
   near: (id) => pinsNear(anyById(id)).length,
+  // round 11 tests: the clusters on the map, and a tap on one
+  clusters: () => MK.filter((m) => m.cluster).map((m) => ({ n: m.items.length, ids: m.items.map((x) => x.id) })),
+  tapCluster: (i) => { const r = MK.filter((m) => m.cluster)[i]; if (r) r.marker.fire('click'); },
+  alerts: () => alertList().map((a) => ({ id: a.id, text: a.text, at: a.at })), samples: () => SAMPLES_ON,
   onb3d: () => ({ loaded: !!ONB3D.mod, info: ONB3D.mod && ONB3D.mod.getRendererInfo ? ONB3D.mod.getRendererInfo() : null, live: !!ONB3D.handle && !ONB3D.handle.fallback, sceneCanvases: document.querySelectorAll('.scene canvas').length, slot: (document.querySelector('.scene') || {}).className || null, time: ONB3D.handle && ONB3D.handle.time }),
   onb3dSeek: (t) => { if (ONB3D.handle && ONB3D.handle.seek) ONB3D.handle.seek(t); },
 };
