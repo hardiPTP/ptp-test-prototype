@@ -62,3 +62,9 @@ Removed with the sample events, deals and invented places they illustrated: `fle
 The real events, openings and news (round 10) have no photos, because none of their sources gave one (`image_url` is empty for all 24 used records). They show the kind's tint block. Their text, dates and links come from the sources named on each item ("Source: ..."), listed in `/home/claude/realdata/items.json`.
 
 21 photos remain, all from Wikimedia Commons as listed above.
+
+## Round 11 photo changes
+
+No files were added or removed. Three place photos are no longer used on places, because they don't show that place: `promenade` (a Carter Road skyline, was on Joggers' Park), `carter` (Carter Road at the Khar end, was on Otters Club) and `park` (a Bandra West street view, was on Patwardhan Park). Those places now show the place tint. The places that keep a photo show that place: Bandra Fort (`fort`, `fort2`), Mount Mary Church (`churchmm`) and St Andrew's Church (`churchsa`).
+
+The sample pins, asks and notices now load only behind the facilitator flag `?samples`, so the other photos above (`pothole`, `pothole2`, `pothole3`, `flood`, `garbage`, `garbage2`, `garbage3`, `tree`, `drain`, `light`, `footpath`, `cables`, `linking`, `park`, `cat`) are shown only in a `?samples` session. They stay in the bundle, with their credits, for that flag.
