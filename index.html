@@ -886,6 +886,11 @@ input::placeholder{transition:color .22s}
 .srcrow{width:100%;text-decoration:none}
 .srcrow span{flex:1}
 
+/* Round 11 */
+/* B: the red alert dot on the masthead avatar (notification red, not the problem orange), 10 px with a 2 px paper ring */
+.avatar{position:relative}
+.avatar .adot{position:absolute;top:1px;right:1px;width:10px;height:10px;border-radius:999px;background:#D92D20;box-shadow:0 0 0 2px var(--paper);pointer-events:none}
+
 </style>
 </head>
 <body>
@@ -2738,11 +2743,11 @@ const S = {
   // persisted
   onboarded: false, signedIn: false, name: '', phone: '', areaId: null, located: false, gps: null,
   mine: [], myComments: {}, deletedComments: {}, flaggedComments: {}, verified: {}, interested: {}, hearts: {},
-  flagged: {}, recent: [], offline: false, places: [], savedAreas: [], ob: null, cur: null, locs: [], wantGps: false, waBuzz: false, paused: {}, alertsRead: {},
+  flagged: {}, recent: [], offline: false, places: [], savedAreas: [], ob: null, cur: null, locs: [], wantGps: false, waBuzz: false, paused: {}, alertsRead: {}, alertsSeen: {},
   // session only
   lens: 'buzz', view: 'map', selected: null, buzzIndex: 0,
 };
-const PERSIST = ['onboarded', 'signedIn', 'name', 'phone', 'areaId', 'located', 'gps', 'mine', 'myComments', 'deletedComments', 'flaggedComments', 'verified', 'interested', 'hearts', 'flagged', 'recent', 'offline', 'places', 'savedAreas', 'ob', 'cur', 'locs', 'wantGps', 'waBuzz', 'paused', 'alertsRead'];
+const PERSIST = ['onboarded', 'signedIn', 'name', 'phone', 'areaId', 'located', 'gps', 'mine', 'myComments', 'deletedComments', 'flaggedComments', 'verified', 'interested', 'hearts', 'flagged', 'recent', 'offline', 'places', 'savedAreas', 'ob', 'cur', 'locs', 'wantGps', 'waBuzz', 'paused', 'alertsRead', 'alertsSeen'];
 function load() {
   try { const raw = localStorage.getItem(LS_KEY); if (!raw) return; const o = JSON.parse(raw); PERSIST.forEach((k) => { if (k in o) S[k] = o[k]; }); } catch (e) {}
   // Round 2 state had one area: it becomes the current and first saved location
@@ -2799,6 +2804,10 @@ function commentsFor(id) {
   const mine = (S.myComments[id] || []).map((c) => Object.assign({ mine: true }, c));
   return seed.concat(plSeed, mine).filter((c) => !S.deletedComments[c.id]).sort((a, b) => new Date(a.at) - new Date(b.at));
 }
+// Round 11 (C1): an item with no real point (its venue or road is just "Bandra West") gets no map marker and no distance
+function hasPoint(it) { return !!it && !it.noPoint; }
+function distOf(it, c) { return hasPoint(it) ? (it.dist != null ? it.dist : distM(c || centre(), it)) : null; }
+function distTxt(it, c) { const d = distOf(it, c); return d == null ? '' : fmtDist(d); }
 function isLive(it) {
   const now = Date.now();
   if (it.liveTill) return new Date(it.liveTill) >= now; // real items: their own end, or the end of their day (round 10)
@@ -3257,7 +3266,7 @@ function renderMast() {
   const a = mastPlace();
   const where = a.where, sub = a.sub || '';
   const right = S.signedIn
-    ? '<button type="button" class="avatar press" data-act="account" aria-label="Your account">' + icon('user', 20) + '</button>'
+    ? '<button type="button" class="avatar press" data-act="account" aria-label="' + (alertsUnseen() ? 'Your account, new alerts' : 'Your account') + '">' + icon('user', 20) + (alertsUnseen() ? '<span class="adot" aria-hidden="true"></span>' : '') + '</button>'
     : '<button type="button" class="signin-pill press" data-act="signin">Sign in</button>';
   const sw = S.view === 'map'
     ? '<button type="button" class="vswitch press" data-act="toggle-view" aria-label="Show as a list">' + icon('list', 20) + '</button>'
@@ -4004,7 +4013,7 @@ const ACT = {
     if (!requireSignIn('interested')) return;
     const id = b.dataset.id;
     if (S.interested[id]) { delete S.interested[id]; save(); rerenderTop(); toast('Removed from your interested list'); }
-    else { S.interested[id] = true; save(); rerenderTop(); vibrate(); toast('Marked interested'); }
+    else { S.interested[id] = new Date().toISOString(); save(); rerenderTop(); vibrate(); toast('Marked interested'); }
   },
   share: (b) => shareItem(b.dataset.id),
   // round 10: a real item's source opens in a new tab, from its card or its page
@@ -5444,36 +5453,58 @@ function openMyPosts() {
   const mine = S.mine.map(decorate);
   openPage('<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">Your pins</span></div><div class="scroll" style="top:100px;padding:0 16px 40px">' + (mine.length ? '<div class="cards">' + mine.map((it) => itemCard(withDist([it])[0])).join('') + '</div>' : emptyState('Nothing posted yet', 'What you post shows up here and on the map.', 'post', 'Post a pin')) + '</div>', { label: 'Your pins' });
 }
-/* Alerts (round 7): realistic dummy alerts, newest first, unread in heavier type. A tap opens its item. */
+/* Alerts (round 11): built only from real items and the tester's own actions, newest first.
+   1. "<event> starts tomorrow": events you marked Interested, dated 6:00 pm the day before they start, shown once that time has passed.
+   2. "New notice near <location>: <title>": real notices within 1.5 km of the picked or a saved location, published in the last 3 days.
+   3. "Your pin '<first line>' is paused", while your own post is paused.
+   Unread rows keep their heavier weight until tapped (alertsRead). Opening the page marks them all seen (alertsSeen), which clears
+   the red dot on the masthead avatar until a new alert comes. */
+const ALERT_NOTICE_DAYS = 3;
 function alertList() {
-  const t = (id) => { const it = itemById(id); return it ? it.title : ''; };
-  const short = (x) => (x.length > 46 ? x.slice(0, 45).replace(/\s+\S*$/, '') + '\u2026' : x);
-  const paused = S.mine.find((m) => S.paused[m.id]);
-  // the next real event that has not started yet (round 10: real listings, real dates)
-  const next = allItems().filter((x) => x.kind === 'event' && x.real && visible(x) && new Date(x.start) > Date.now()).sort((a, b) => tms(a.start) - tms(b.start))[0];
-  const list = [
-    { id: 'al-ward', item: 'p-16th-light', icon: 'ward', at: TP('0 06:15'), text: 'Ward acknowledged your pin \u201c' + short(t('p-16th-light')) + '\u201d' },
-    { id: 'al-ask', item: 'a-ladder', icon: 'bubble', at: TP('0 06:50'), text: '* replied to your ask: \u201ci have a folding one, lane next to the bakery, ask at gate\u201d' },
-    next && { id: 'al-event-' + next.id, item: next.id, icon: 'gather', at: TP('0 06:00'), text: '\u201c' + short(next.title) + '\u201d is on ' + low(whenShort(next)) },
-    { id: 'al-verify', item: 'p-waroda-drain', icon: 'checkcircle', at: TP('-2 16:30'), text: 'Your pin \u201c' + short(t('p-waroda-drain')) + '\u201d got 3 verifies after the ward fix' },
-    { id: 'al-notice', item: 'n-watercut', icon: 'megaphone', at: TP('-1 09:10'), text: 'New notice near ' + ((S.locs[0] && locLabelOf(S.locs[0])) || area().name) + ': \u201c' + short(t('n-watercut')) + '\u201d' },
-    { id: 'al-reply', item: 'r-ollyfest', icon: 'bubble', at: TP('-1 18:00'), text: '* replied to your comment on Olly Fest: \u201clisting doesnt say, will ask at the gate n post here\u201d' },
-  ].filter(Boolean);
-  // the paused-post reminder only shows when one of your pins is paused, dated when it was paused
-  if (paused) { const at = typeof S.paused[paused.id] === 'string' ? S.paused[paused.id] : new Date().toISOString(); list.push({ id: 'al-paused-' + paused.id, item: paused.id, icon: 'clock', at, text: 'Your post \u201c' + short(paused.title || splitText(paused.text).title) + '\u201d is still paused. Only you can see it.' }); }
+  const now = Date.now();
+  const short = (x) => (x.length > 46 ? x.slice(0, 45).replace(/\s+\S*$/, '') + '…' : x);
+  const list = [];
+  // 1. events you are interested in
+  Object.keys(S.interested || {}).forEach((id) => {
+    const it = itemById(id); if (!it || it.kind !== 'event' || !it.start || S.flagged[id]) return;
+    const d = new Date(it.start); d.setDate(d.getDate() - 1); d.setHours(18, 0, 0, 0);
+    if (d.getTime() > now) return;
+    const marked = S.interested[id];
+    if (typeof marked === 'string' && new Date(marked).getTime() >= new Date(it.start).getTime()) return; // marked after it started: no reminder
+    list.push({ id: 'al-event-' + id, item: id, icon: 'gather', at: d.toISOString(), text: short(it.title) + ' starts tomorrow' });
+  });
+  // 2. new real notices near the picked or a saved location
+  const spots = [{ name: area().name, lat: area().lat, lng: area().lng }].concat((S.locs || []).map((l) => ({ name: locLabelOf(l), lat: l.lat, lng: l.lng })));
+  ITEMS.filter((it) => it.real && it.kind === 'notice' && hasPoint(it) && it.at && !S.flagged[it.id]).forEach((it) => {
+    const t = new Date(it.at).getTime(); if (t > now || dayDiff(it.at) < -ALERT_NOTICE_DAYS) return;
+    const s = spots.find((x) => isFinite(x.lat) && distM(x, it) <= RADIUS); if (!s) return;
+    list.push({ id: 'al-notice-' + it.id, item: it.id, icon: 'megaphone', at: it.at, dateOnly: !!it.atNoTime, text: 'New notice near ' + s.name + ': ' + short(it.title) });
+  });
+  // 3. your paused pins
+  S.mine.forEach((m) => {
+    const ts = S.paused && S.paused[m.id]; if (!ts) return;
+    const at = typeof ts === 'string' ? ts : new Date().toISOString();
+    list.push({ id: 'al-paused-' + m.id + '-' + at, item: m.id, icon: 'clock', at, text: 'Your pin “' + short(m.title || splitText(m.text).title) + '” is paused. Only you can see it.' });
+  });
   return list.sort((a, b) => new Date(b.at) - new Date(a.at));
 }
-function alertsUnread() { return alertList().slice(0, 3).filter((a) => !S.alertsRead[a.id]).length; }
+function alertsUnread() { return alertList().filter((a) => !S.alertsRead[a.id]).length; }
+// The red dot: an alert the tester hasn't seen yet
+function alertsUnseen() { return alertList().some((a) => !S.alertsSeen[a.id]); }
+function markAlertsSeen() { let ch = false; alertList().forEach((a) => { if (!S.alertsSeen[a.id]) { S.alertsSeen[a.id] = true; ch = true; } }); if (ch) { save(); renderMast(); } }
+function alertDate(a) { const s = a.dateOnly ? (dayDiff(a.at) === 0 ? 'today' : dayDiff(a.at) === -1 ? 'yesterday' : fmtDate(a.at)) : fmtPosted(a.at); return s.replace(/^./, (c) => c.toUpperCase()); }
 function openAlerts() {
   const L = openPage('', { label: 'Alerts' });
   L.render = () => {
-    const list = alertList(); const fresh = new Set(list.slice(0, 3).map((a) => a.id));
-    L.el.innerHTML = '<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">Alerts</span></div><div class="scroll" style="top:100px;padding:0 16px 40px"><div class="alerts">'
-      + list.map((a) => '<button type="button" class="alrow press' + (fresh.has(a.id) && !S.alertsRead[a.id] ? ' unread' : '') + '" data-alert="' + a.id + '"><span class="puck">' + icon(a.icon, 18) + '</span><span class="altx"><span class="alt">' + esc(a.text) + '</span><span class="t-meta">' + esc(fmtPosted(a.at).replace(/^./, (c) => c.toUpperCase())) + '</span></span></button>').join('') + '</div></div>';
+    const list = alertList();
+    L.el.innerHTML = '<div class="status"></div><div class="phead"><button type="button" class="circ press" data-act="back" aria-label="Back">' + icon('chevL', 22) + '</button><span class="ttl">Alerts</span></div><div class="scroll" style="top:100px;padding:0 16px 40px">'
+      + (list.length ? '<div class="alerts">' + list.map((a) => '<button type="button" class="alrow press' + (!S.alertsRead[a.id] ? ' unread' : '') + '" data-alert="' + esc(a.id) + '"><span class="puck">' + icon(a.icon, 18) + '</span><span class="altx"><span class="alt">' + esc(a.text) + '</span><span class="t-meta">' + esc(alertDate(a)) + '</span></span></button>').join('') + '</div>'
+        : '<div class="empty"><div class="t-h2">No alerts yet</div></div>') + '</div>';
     $$('[data-alert]', L.el).forEach((b) => (b.onclick = () => {
       const a = list.find((x) => x.id === b.dataset.alert); S.alertsRead[a.id] = true; save(); L.render();
       openItem(a.item);
     }));
+    markAlertsSeen();
   };
   L.render();
   return L;
@@ -5577,6 +5608,9 @@ function boot() {
     else openingSplash();
   }
   window.addEventListener('resize', () => { if (map) map.invalidateSize(); renderMast(); });
+  // Round 11: a reminder that comes due (6 pm the day before an event) brings the red dot back without a reload
+  let dotWas = S.signedIn && alertsUnseen();
+  setInterval(() => { const d = S.signedIn && alertsUnseen(); if (d !== dotWas) { dotWas = d; renderMast(); } }, 30000);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 // Small read-only hooks for the Playwright run
