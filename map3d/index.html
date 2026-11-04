@@ -45,6 +45,12 @@ body.night .lbl.area,body.night .lbl.big{color:#FFF6EA}
 .time input{flex:1;min-width:0;accent-color:#17140F}
 .time button{border:0;background:var(--well);border-radius:16px;height:30px;padding:0 12px;font:400 12px var(--text);color:var(--ink);cursor:pointer}
 .time button.on{background:var(--ink);color:var(--canvas)}
+.tag{position:absolute;left:0;top:0;pointer-events:none}
+.tag div{position:absolute;left:24px;top:-44px;height:24px;display:flex;align-items:center;padding:0 10px;border-radius:12px;background:#fff;border:1.5px solid var(--kc);font:400 11px/1 var(--text);color:var(--ink);white-space:nowrap;box-shadow:0 3px 10px rgba(23,20,15,.12);pointer-events:auto;cursor:pointer}
+.tag div::before{content:'';position:absolute;left:-5px;top:50%;width:8px;height:8px;background:#fff;border-left:1.5px solid var(--kc);border-bottom:1.5px solid var(--kc);transform:translateY(-50%) rotate(45deg)}
+.tag.sel div{background:color-mix(in srgb,var(--kc) 10%,#fff)}
+.plbl{width:0;height:0;pointer-events:none}.plbl span{position:absolute;left:15px;top:-7px;font:500 11px/1.15 var(--text);white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff,0 0 1px #fff;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+body.night .plbl span{text-shadow:0 0 3px #1B2233,0 0 3px #1B2233,0 0 2px #1B2233;filter:brightness(1.6)}
 #hint{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);background:rgba(23,20,15,.78);color:#fff;font:400 13px/18px var(--text);padding:10px 14px;border-radius:16px;text-align:center;transition:opacity .5s;pointer-events:none}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
@@ -90,9 +96,12 @@ const toLL = (x, z) => [((x / K + X0) / R) * 180 / Math.PI, (2 * Math.atan(Math.
 const tileXY = (lon, lat, zm) => { const n = 2 ** zm; const x = (lon + 180) / 360 * n; const r = lat * Math.PI / 180; const y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n; return [x, y]; };
 
 /* ---------- palette (onboarding: sand ground, warm white, olive, peach) ---------- */
-const COL = { bld: 0xFFFDF9, bldA: 0xF8CDAE, bldB: 0xFFE6D4 };
+const COL = { bld: 0xFFFDF9 };
+// Mumbai facades: mostly white, with the pastels you see on Bandra's lanes; towers stay white or pale glass
+const FACADES = [0xF0AE86, 0xF4CF5E, 0x93C6DE, 0xA2D196, 0xEC9DAE, 0xC4AAE4, 0xEE9F6C, 0x86C6B4, 0xF4D69C, 0xE8846A];
+const TOWERS = [0xFFFFFF, 0xC9DAE6, 0xF3E6D6, 0xB9D3DD, 0xF6D9C6];
 const PAL = {
-  day:   { sky: 0xF3EBDF, ground: 0xE7D6BB, water: 0x9FC4D3, park: 0xB4C07C, wood: 0x9BAD68, pitch: 0xC3CD8C, civic: 0xF2D6BF, sand: 0xF0DDB5, road: 0xFFFFFF, roadMajor: 0xFFFFFF, casing: 0xCFB998, rail: 0xC9B79E, bld: 0xFFFFFF, canopy: 0x8FA052, trunk: 0xA9866A, tank: 0x3C4048, hs: 0xFFF6EA, hg: 0xC9B79A },
+  day:   { sky: 0xF1EADF, ground: 0xE9DAC2, water: 0x86C1DE, park: 0xA6C86C, wood: 0x86AE5A, pitch: 0xB3D27C, civic: 0xF5D3B8, sand: 0xF0DDB5, road: 0xFFFFFF, roadMajor: 0xFFFFFF, casing: 0xCFB998, rail: 0xC9B79E, bld: 0xFFFFFF, canopy: 0x7FA346, trunk: 0xA9866A, tank: 0x3C4048, hs: 0xFFF6EA, hg: 0xC9B79A },
   dusk:  { sky: 0xF2C4A2, ground: 0xDFC6A6, water: 0x93AFC4, park: 0xA2AA76, wood: 0x8E9862, pitch: 0xB0B680, civic: 0xE6C6AD, sand: 0xE2C7A2, road: 0xF8EADD, roadMajor: 0xFBE7D2, casing: 0xBCA083, rail: 0xAC937A, bld: 0xF6E7DC, canopy: 0x7B8648, trunk: 0x8E6F55, tank: 0x2A2626, hs: 0xFFD3AE, hg: 0x947761 },
   night: { sky: 0x1A1E2C, ground: 0x2B2D36, water: 0x1A2436, park: 0x2B352E, wood: 0x252E29, pitch: 0x303A34, civic: 0x36323B, sand: 0x3A3739, road: 0x4A4A52, roadMajor: 0x7A6648, casing: 0x22242D, rail: 0x3A3B44, bld: 0x8A8C98, canopy: 0x2B392C, trunk: 0x2C2723, tank: 0x1A1A1E, hs: 0x8A93B0, hg: 0x1B1C22 },
 };
@@ -105,7 +114,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const labelR = new CSS2DRenderer({ element: document.getElementById('labels') });
 labelR.setSize(innerWidth, innerHeight);
@@ -116,7 +125,7 @@ scene.fog = new THREE.Fog(PAL.day.sky, 3000, 9000);
 const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 5, 200000);
 
 const hemi = new THREE.HemisphereLight(0xFFF6EA, 0xC9B79A, 1.25); scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xFFF1DE, 2.7);
+const sun = new THREE.DirectionalLight(0xFFF1DE, 2.2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
 const SC = sun.shadow.camera; SC.left = -700; SC.right = 700; SC.top = 700; SC.bottom = -700; SC.near = 10; SC.far = 4000;
 scene.add(sun, sun.target);
@@ -128,7 +137,7 @@ controls.maxPolarAngle = THREE.MathUtils.degToRad(68); controls.zoomSpeed = 1.1;
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
 
 /* ---------- ground ---------- */
-const flat = (color, order) => { const m = new THREE.MeshBasicMaterial({ color, depthWrite: false }); m.userData.order = order; return m; };
+const flat = (color, order) => { const m = new THREE.MeshBasicMaterial({ color, depthWrite: false, side: THREE.DoubleSide }); m.userData.order = order; return m; };
 const D0 = PAL.day;
 const MAT = {
   ground: flat(D0.ground, 0), civic: flat(D0.civic, 1), sand: flat(D0.sand, 1), park: flat(D0.park, 2), wood: flat(D0.wood, 2), pitch: flat(D0.pitch, 2),
@@ -247,21 +256,28 @@ function addBuilding(B, proj, poly, H, color) {
   const tris = THREE.ShapeUtils.triangulateShape(roofOuter, holes);
   const all = roofOuter.concat(...holes); let base = B.pos.length / 3;
   for (const p of all) { B.pos.push(p.x, H, p.y); B.col.push(c.r, c.g, c.b); }
-  for (const t of tris) B.idx.push(base + t[0], base + t[2], base + t[1]);
-  const shade = c.clone().multiplyScalar(0.97);
-  for (const r of [ring, ...poly.holes.map((h) => h.slice(0, -1).map(proj))]) {
+  for (const t of tris) { // roof triangles must face up
+    const p0 = all[t[0]], p1 = all[t[1]], p2 = all[t[2]];
+    const ny = (p1.y - p0.y) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.y - p0.y);
+    if (ny >= 0) B.idx.push(base + t[0], base + t[1], base + t[2]); else B.idx.push(base + t[0], base + t[2], base + t[1]);
+  }
+  const shade = c.clone().multiplyScalar(0.96);
+  const area = (r) => { let a = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; a += p[0] * q[1] - q[0] * p[1]; } return a; };
+  const rings = [[ring, 1], ...poly.holes.map((h) => [h.slice(0, -1).map(proj), -1])];
+  for (const [r, kind] of rings) {
+    const out = Math.sign(area(r)) * kind; // walls face away from the building, into courtyards for holes
     for (let i = 0; i < r.length; i++) {
       const a = r[i], b = r[(i + 1) % r.length]; base = B.pos.length / 3;
       B.pos.push(a[0], 0, a[1], b[0], 0, b[1], b[0], H, b[1], a[0], H, a[1]);
       for (let k = 0; k < 4; k++) B.col.push(shade.r, shade.g, shade.b);
-      B.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      if (out > 0) B.idx.push(base, base + 2, base + 1, base, base + 3, base + 2); else B.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
 }
 
 const ROADW = { motorway: 22, trunk: 18, primary: 15, secondary: 12, tertiary: 10, minor: 7, service: 4.5, track: 3, path: 2.2, rail: 3, transit: 2.5 };
 const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary']);
-const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
 
 function buildTile(vt, z, tx, ty, detail) {
   const group = new THREE.Group(); const labels = [];
@@ -298,8 +314,11 @@ function buildTile(vt, z, tx, ty, detail) {
     each('building', (f, proj, i) => {
       if (f.type !== 3) return;
       const H = Math.min(f.properties.render_height || 9, 80) * 1.0;
-      const r = hash(tx + ':' + ty + ':' + i); const color = r < 0.05 ? COL.bldA : r < 0.09 ? COL.bldB : COL.bld;
+      let j = 0;
       for (const p of polygons(f)) {
+        // one feature can hold a whole block of buildings, so colour each building on its own
+        const r = hash(tx + ':' + ty + ':' + i + ':' + (j++) + ':' + p.outer[0].x + ',' + p.outer[0].y);
+        const color = H > 40 ? TOWERS[Math.floor(r * TOWERS.length)] : r < 0.62 ? FACADES[Math.floor(r / 0.62 * FACADES.length)] : COL.bld;
         addBuilding(get('bld'), proj, p, Math.max(H, 4), color);
         if (H >= 12 && hash('t' + tx + ty + i) < 0.45) {
           const ring = p.outer.slice(0, -1).map(proj); let cx = 0, cz = 0; for (const q of ring) { cx += q[0]; cz += q[1]; } cx /= ring.length; cz /= ring.length;
@@ -493,7 +512,11 @@ const pins = []; const MK = {};
   ITEMS.forEach((it, i) => {
     const [x, z] = ll(it.lng, it.lat); const m = MK[it.k];
     const sp = new THREE.Sprite(m); sp.center.set(0.5, m.userData.tip); sp.position.set(x, 1, z); sp.renderOrder = 60;
-    sp.userData = { pin: true, i, pr: -1000 }; sizeSprite(sp); scene.add(sp); pins.push(sp); sprites.add(sp);
+    sp.userData = { pin: true, i, pr: -1000 + i * 0.01 }; sizeSprite(sp); scene.add(sp); pins.push(sp); sprites.add(sp);
+    const el = document.createElement('div'); el.className = 'tag'; el.style.setProperty('--kc', KIND[it.k]);
+    const chip = document.createElement('div'); chip.textContent = it.t.length > 28 ? it.t.slice(0, 27).trimEnd() + '…' : it.t; el.append(chip);
+    chip.addEventListener('click', (e) => { e.stopPropagation(); showPin(sp); flyTo(sp.position.x, sp.position.z, Math.min(camera.position.distanceTo(controls.target), 900)); });
+    const tag = new CSS2DObject(el); tag.position.set(x, 1, z); tag.userData = { kind: 'tag', pin: sp, w: chip.textContent.length * 6 + 30 }; scene.add(tag); sp.userData.tag = tag;
   });
   dirtyLabels = true;
 })();
@@ -582,7 +605,7 @@ function applyTime() {
   for (const k of ['ground', 'civic', 'sand', 'park', 'wood', 'pitch', 'water', 'casing', 'rail', 'road', 'roadMajor']) MAT[k].color.copy(pal(k, day, dusk));
   MAT.bld.color.copy(pal('bld', day, dusk)); MAT.canopy.color.copy(pal('canopy', day, dusk)); MAT.trunk.color.copy(pal('trunk', day, dusk)); MAT.tank.color.copy(pal('tank', day, dusk));
   hemi.color.copy(pal('hs', day, dusk)); hemi.groundColor.copy(pal('hg', day, dusk)); hemi.intensity = 0.75 + 0.5 * day;
-  sun.intensity = 0.3 + 2.4 * day * (1 - 0.6 * dusk); sun.color.set(dusk > 0.35 ? 0xFFCDA8 : day > 0.5 ? 0xFFF1DE : 0xB8C6F0);
+  sun.intensity = 0.3 + 1.9 * day * (1 - 0.6 * dusk); sun.color.set(dusk > 0.35 ? 0xFFCDA8 : day > 0.5 ? 0xFFF1DE : 0xB8C6F0);
   shadowCatcher.material.opacity = 0.05 + 0.17 * day;
   uNight.value = 1 - day;
   document.body.classList.toggle('night', day < 0.4);
@@ -598,7 +621,7 @@ function sunDirection() {
 let dirtyLabels = true, lastLabelT = 0;
 function declutter() {
   const d = camera.position.distanceTo(controls.target); const placed = []; const v = new THREE.Vector3();
-  const objs = []; scene.traverse((o) => { if (o.isCSS2DObject) objs.push(o); });
+  const objs = []; scene.traverse((o) => { if (o.isCSS2DObject && o.userData.kind !== 'tag' && o.userData.kind !== 'plbl') objs.push(o); });
   objs.sort((a, b) => (a.userData.kind === 'area' ? 0 : 1) - (b.userData.kind === 'area' ? 0 : 1));
   for (const o of objs) {
     let ok = o.userData.kind === 'area' ? true : d < 1800;
@@ -613,9 +636,30 @@ function declutter() {
     if (ok) {
       v.copy(sp.position).project(camera);
       if (v.z > 1 || Math.abs(v.x) > 1.15 || Math.abs(v.y) > 1.15) ok = false;
-      else { const sx = v.x * innerWidth / 2, sy = v.y * innerHeight / 2, r = sp.userData.pin ? 26 : 22; for (const t of taken) if (Math.abs(t[0] - sx) < r + t[2] && Math.abs(t[1] - sy) < r + t[2]) { ok = sp.userData.pin && t[3]; break; } if (ok || sp.userData.pin) taken.push([sx, sy, sp.userData.pin ? 14 : 11, sp.userData.pin]); }
+      else { const sx = v.x * innerWidth / 2, sy = v.y * innerHeight / 2; const w = sp.userData.pin ? 44 : 30 + Math.min(26, sp.userData.name.length) * 6.2, h = sp.userData.pin ? 44 : 24, x0 = sp.userData.pin ? sx - 22 : sx - 13; for (const t of taken) if (x0 < t[0] + t[2] && x0 + w > t[0] && sy - h / 2 < t[1] + t[3] / 2 && sy + h / 2 > t[1] - t[3] / 2) { ok = sp.userData.pin && t[4]; break; } if (ok || sp.userData.pin) taken.push([x0, sy, w, h, sp.userData.pin]); }
     }
     sp.visible = ok;
+    if (sp.userData.poi) {
+      if (ok && !sp.userData.lbl) {
+        const el = document.createElement('div'); el.className = 'plbl'; const tx = document.createElement('span'); tx.style.color = sp.userData.cat.color; tx.textContent = sp.userData.name.length > 26 ? sp.userData.name.slice(0, 25).trimEnd() + '…' : sp.userData.name; el.append(tx);
+        const o = new CSS2DObject(el); o.position.copy(sp.position); o.userData = { kind: 'plbl' }; sp.parent.add(o); sp.userData.lbl = o;
+      }
+      if (sp.userData.lbl) sp.userData.lbl.visible = ok;
+    }
+  }
+  // title tags beside pins: selected first, then by order; hidden when they would overlap another tag
+  const boxes = [];
+  const pinsSorted = pins.slice().sort((a, b) => (b === selPin) - (a === selPin));
+  for (const sp of pinsSorted) {
+    const tag = sp.userData.tag; if (!tag) continue;
+    let ok = sp.visible && d < 5000;
+    if (ok) {
+      v.copy(sp.position).project(camera); const sx = (v.x + 1) / 2 * innerWidth + 24, sy = (1 - v.y) / 2 * innerHeight - 56, w = tag.userData.w;
+      if (sx + w > innerWidth + 40) ok = false;
+      for (const bx of boxes) if (sx < bx[0] + bx[2] && sx + w > bx[0] && sy < bx[1] + 26 && sy + 26 > bx[1]) { ok = sp === selPin; break; }
+      if (ok) boxes.push([sx, sy, w]);
+    }
+    tag.visible = ok; tag.element.classList.toggle('sel', sp === selPin);
   }
 }
 
