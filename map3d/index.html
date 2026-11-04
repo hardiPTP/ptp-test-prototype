@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>PTP Mumbai 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@400&family=Stack+Sans+Text:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17140F;--ink60:rgba(23,20,15,.6);--ink45:rgba(23,20,15,.45);--canvas:#FBF8F4;--well:#F1ECE4;--orange:#E4491C;
+--k-problem:#E4491C;--k-event:#6B48B8;--k-deal:#B5306E;--k-notice:#B7790B;--text:'Stack Sans Text',system-ui,sans-serif;--head:'Stack Sans Headline','Stack Sans Text',system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#F2EADF;color:var(--ink);font-family:var(--text);font-weight:300}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#labels{position:fixed;inset:0;pointer-events:none}
+.lbl{font:400 11px/1 var(--text);color:rgba(23,20,15,.72);white-space:nowrap;text-shadow:0 0 3px #FBF8F4,0 0 3px #FBF8F4,0 0 2px #FBF8F4;letter-spacing:.01em}
+.lbl.area{font:500 12.5px/1 var(--text);color:rgba(23,20,15,.82)}
+.lbl.big{font:400 15px/1 var(--head);color:var(--ink)}
+.top{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 12px);display:flex;align-items:center;gap:8px;pointer-events:none}
+.mast{pointer-events:auto;background:rgba(251,248,244,.96);border-radius:20px;padding:10px 14px 10px 16px;box-shadow:0 6px 18px rgba(23,20,15,.10);display:flex;flex-direction:column;min-width:0;flex:1}
+.mast b{font:400 20px/24px var(--head);font-weight:400}
+.mast span{font:300 12px/16px var(--text);color:var(--ink60)}
+.btns{display:flex;gap:8px;pointer-events:auto}
+.circ{width:46px;height:46px;border-radius:50%;border:0;background:rgba(251,248,244,.96);box-shadow:0 6px 18px rgba(23,20,15,.10);display:grid;place-items:center;font:500 12px var(--text);color:var(--ink);cursor:pointer}
+.circ svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chips{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;gap:8px;z-index:2}
+.pill{border:0;border-radius:22px;height:44px;padding:0 16px;background:rgba(251,248,244,.96);box-shadow:0 6px 18px rgba(23,20,15,.10);font:400 13.5px var(--text);color:var(--ink);cursor:pointer}
+.pill.on{background:var(--ink);color:var(--canvas)}
+#card{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 70px);background:#fff;border-radius:22px;padding:16px 16px 14px;box-shadow:0 14px 34px rgba(23,20,15,.16);transform:translateY(calc(100% + 120px));visibility:hidden;transition:transform .28s cubic-bezier(.2,.8,.2,1),visibility 0s .28s;z-index:3;max-width:460px;margin:0 auto}
+#card.on{transform:none;visibility:visible;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+#card .k{display:flex;align-items:center;gap:8px;font:400 12px var(--text);color:var(--ink60);margin-bottom:6px}
+#card .k i{width:10px;height:10px;border-radius:50%;display:inline-block}
+#card h3{font:400 17px/22px var(--head);margin:0 0 6px}
+#card p{font:300 13px/18px var(--text);color:var(--ink60);margin:0 0 10px}
+#card .meta{font:300 12.5px/16px var(--text);color:var(--ink60)}
+#card a{color:var(--ink);text-underline-offset:3px}
+#card .x{position:absolute;right:10px;top:10px;width:34px;height:34px;border-radius:50%;border:0;background:var(--well);font:400 18px/1 var(--text);color:var(--ink60);cursor:pointer}
+.attr{position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom) + 4px);font:300 9.5px var(--text);color:var(--ink45);z-index:1}
+.attr a{color:inherit}
+#load{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 86px);transform:translateX(-50%);background:rgba(23,20,15,.82);color:#fff;font:400 12px var(--text);padding:7px 12px;border-radius:14px;transition:opacity .3s;pointer-events:none}
+#hint{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);background:rgba(23,20,15,.78);color:#fff;font:400 13px/18px var(--text);padding:10px 14px;border-radius:16px;text-align:center;transition:opacity .5s;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<div class="top">
+  <div class="mast"><b id="mt">Bandra West</b><span id="ms">Mumbai in 3D, test</span></div>
+  <div class="btns">
+    <button class="circ" id="tilt" aria-label="Switch between 3D and flat"><span id="tiltl">2D</span></button>
+    <button class="circ" id="north" aria-label="Face north"><svg viewBox="0 0 24 24"><path d="M12 3l5 16-5-3-5 3z"/></svg></button>
+  </div>
+</div>
+<div class="chips">
+  <button class="pill on" data-go="bandra">Bandra</button>
+  <button class="pill" data-go="south">South Bombay</button>
+  <button class="pill" data-go="all">All Mumbai</button>
+</div>
+<div id="card"><button class="x" aria-label="Close">&times;</button><div class="k"><i></i><span></span></div><h3></h3><p></p><div class="meta"></div></div>
+<div id="load">Loading the city</div>
+<div id="hint">Drag to move, pinch to zoom,<br>two fingers to tilt and turn</div>
+<div class="attr">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, <a href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a>, <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a></div>
+<script type="module">
+import * as THREE from 'three';
+import { MapControls } from 'three/addons/controls/MapControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { VectorTile } from 'https://cdn.jsdelivr.net/npm/@mapbox/vector-tile@2.0.3/+esm';
+import Pbf from 'https://cdn.jsdelivr.net/npm/pbf@4.0.1/+esm';
+
+const ITEMS = [{"k": "problem", "sub": "construction", "t": "BMC halts redevelopment work in Oshiwara over dust pollution", "b": "The K/West ward office issued a stop-work notice and a Rs 35,000 fine to a redevelopment site in Apna Ghar Complex, Oshiwara, after residents complained about heavy demolition dust. Inspectors found uncovered debris, loose soil on footpaths and roads, and no tyre-washing facility.", "loc": "Andheri West", "place": "Apna Ghar Complex redevelopment site", "when": "21 Oct", "src": "Grihik News", "url": "https://www.grihik.com/news/real-estate-news/mumbai-bmc-andheri-demolition-notice", "lat": 19.148516, "lng": 72.831667, "approx": true}, {"k": "notice", "sub": "traffic", "t": "Mogra Nala bridge in Oshiwara to remain closed until May 31, 2027", "b": "The Mogra Nala bridge on Pramod Navalkar Marg, linking SAB TV Road and New Link Road, is shut to vehicles in both directions for demolition and reconstruction. Residents expect longer trips via Versova and want illegal parking near the bridge cleared.", "loc": "Andheri West", "place": "Mogra Nala bridge", "when": "3 Nov", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mogra-nala-bridge-in-oshiwara-to-remain-closed-until-may-31-2027-residents-fear-traffic-congestion", "lat": 19.148516, "lng": 72.831667, "approx": true}, {"k": "notice", "sub": "tree-felling", "t": "Over 1,200 mangroves to be cleared for Versova-Madh bridge", "b": "The Bombay High Court has approved removal of 1,237 mangroves for the Rs 2,395 crore cable-stayed bridge across Malad Creek, from Fisheries University Road in Versova to Madh Jetty Road. Ground assessment work has begun, with completion scheduled for March 2029.", "loc": "Versova", "place": "Versova end of Versova-Madh bridge", "when": "", "src": "Mumbai Live", "url": "https://www.mumbailive.com/en/infrastructure/over-1200-trees-to-be-cut-for-versova-madh-bridge-94893", "lat": 19.136369, "lng": 72.821061, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Western Railway demolishes 94 structures at Garib Nagar, Bandra East", "b": "Western Railway cleared the remaining 94 structures at Garib Nagar on October 30 after MMRDA rehoused the eligible families, following an October 23 High Court order. The land is for a new Platform 8 and an integrated railway complex east of Bandra Terminus.", "loc": "Bandra East", "place": "Garib Nagar", "when": "30 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-western-railway-demolishes-94-structures-at-bandras-garib-nagar-after-pap-rehabilitation-video", "lat": 19.062388, "lng": 72.840918, "approx": true}, {"k": "notice", "sub": "transit", "t": "Karnavati Express to run from Bandra Terminus, 1 to 30 November", "b": "Because of reconstruction at the Mumbai Central yard, train 12933 Karnavati Express leaves from Bandra Terminus at 1:55 pm and train 12934 terminates there at 12:20 pm until November 30. Passengers should check the terminal on their tickets.", "loc": "Bandra East", "place": "Bandra Terminus", "when": "27 Oct", "src": "Gujarat Samachar", "url": "https://english.gujaratsamachar.com/news/ahmedabad/ahmedabad-mumbai-karnavati-express-to-run-from-bandra-terminus-instead-of-mumbai-central-from-nov-1-69015334225", "lat": 19.062388, "lng": 72.840918, "approx": false}, {"k": "notice", "sub": "incident", "t": "Fire at Foo restaurant in VN Sphere Mall, Linking Road", "b": "A Level II fire broke out at Foo restaurant on the third floor of VN Sphere Mall at about 6 am on October 30 and was put out by 8:55 am. The restaurant was closed and no one was hurt; the cause is under investigation.", "loc": "Bandra West", "place": "VN Sphere Mall", "when": "30 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/major-fire-breaks-out-at-foo-restaurant-in-bandra-wests-vn-sphere-mall-no-injuries-reported", "lat": 19.06167, "lng": 72.836025, "approx": true}, {"k": "notice", "sub": "incident", "t": "Fire at wooden warehouse on Anand Road, Malad West", "b": "A Level I fire broke out on Monday night at the Ruia wooden warehouse on Anand Road, near Ruia Marriage Hall, and was extinguished at 1:31 am. The fire was confined to wooden planks and cardboard on the ground floor and no injuries were reported.", "loc": "Malad West", "place": "Ruia wooden warehouse", "when": "3 Nov", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/fire-breaks-out-at-wooden-warehouse-in-malad-west-fire-brigade-declares-level-i-blaze-no-injuries-reported", "lat": 19.185285, "lng": 72.835861, "approx": true}, {"k": "notice", "sub": "traffic", "t": "Dindoshi to Film City flyover opens in Goregaon East", "b": "The 1.26 km, six-lane GMLR flyover at the Ratnagiri Hotel junction opened on October 22, linking General Arun Kumar Vaidya Marg with Dadasaheb Phalke Chitranagari Road near Santosh Nagar. It is part of phase 1 of the Goregaon-Mulund Link Road.", "loc": "Goregaon East", "place": "Ratnagiri Hotel junction", "when": "22 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/mumbais-sion-vidyavihar-and-goregaon-flyovers-finally-opens-for-commuters-102226", "lat": 19.174826, "lng": 72.862348, "approx": false}, {"k": "notice", "sub": "transit", "t": "Night block on fast lines between Borivali and Bhayandar", "b": "Western Railway ran a night block on the Up and Down fast lines between Borivali and Bhayandar from 11:30 pm on October 31 to 4:30 am on November 1. Fast locals were moved to the slow lines, with some cancellations and delays.", "loc": "Borivali", "place": "Borivali station", "when": "31 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-local-train-update-mega-block-on-central-harbour-lines-on-sunday-nov-1-night-block-on-wr-between-borivali-bhayandar-check-details-mumbai-news", "lat": 19.231392, "lng": 72.840861, "approx": false}, {"k": "notice", "sub": "transit", "t": "Diwali special trains delay locals between Nalasopara and Borivali", "b": "Four Western Railway locals lost time between Nalasopara and Borivali in the Monday morning peak on November 2, as two Diwali specials to Mumbai Central ran on the suburban section. Slow door-closing on AC locals added to the delays.", "loc": "Borivali", "place": "Borivali station", "when": "3 Nov", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/diwali-special-trains-and-ac-locals-disrupt-western-railway-timetable-four-services-delayed-between-nalasopara-and-borivali", "lat": 19.231392, "lng": 72.840861, "approx": true}, {"k": "notice", "sub": "tree-felling", "t": "Tree Authority to weigh felling 43 trees for proposed Kandivali West hospital", "b": "A proposal by Akar Architects and Consultants seeks to fell 43 trees and replant 54 for a proposed hospital in Kandivali West. Of 411 trees on the plot, 97 would be affected and 314 retained.", "loc": "Kandivali", "place": "Proposed hospital plot", "when": "20 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-bmc-tree-authority-to-consider-proposals-to-fell-185-trees-for-redevelopment-hospital-and-coastal-road-projects", "lat": 19.214014, "lng": 72.837292, "approx": true}, {"k": "notice", "sub": "tree-felling", "t": "Tree Authority to weigh felling 22 trees for Andheri East and Jogeshwari East SRA scheme", "b": "LK Housing LLP has sought permission to fell 22 trees and replant 8 for a combined SRA scheme covering Jai Hanuman and Tejomay societies in Andheri East and Vighnaharta society in Jogeshwari East.", "loc": "Andheri East", "place": "Jai Hanuman and Tejomay SRA societies", "when": "20 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-bmc-tree-authority-to-consider-proposals-to-fell-185-trees-for-redevelopment-hospital-and-coastal-road-projects", "lat": 19.115883, "lng": 72.854202, "approx": true}, {"k": "notice", "sub": "tree-felling", "t": "Three dead trees to go near Mindspace Garden for coastal road access bridge", "b": "The BMC bridges department has proposed removing three dead trees, and replanting 37, near Mindspace Garden on MDP Road to clear the alignment of a temporary access bridge for the Coastal Road North interchange.", "loc": "Goregaon West", "place": "Mindspace Garden", "when": "20 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-bmc-tree-authority-to-consider-proposals-to-fell-185-trees-for-redevelopment-hospital-and-coastal-road-projects", "lat": 19.184785, "lng": 72.834135, "approx": false}, {"k": "notice", "sub": "opening-other", "t": "Gorai mangrove park may open within weeks", "b": "The Bharatratna Atal Bihari Vajpayee Mangrove Park, an eight-hectare, Rs 33.43 crore park with a 740 m elevated boardwalk and bird observatory, has awaited inauguration for over six months. Citing Mid-Day, Time Out says it could open within 10 to 15 days; no date is confirmed.", "loc": "Gorai", "place": "Bharatratna Atal Bihari Vajpayee Mangrove Park", "when": "26 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/mumbais-first-mangrove-park-in-gorai-may-open-before-diwali-2026-102626", "lat": 19.23641, "lng": 72.818717, "approx": true}, {"k": "notice", "sub": "advisory", "t": "BMC pre-Diwali cleaning drive on Carter Road, SV Road and Link Road", "b": "The BMC has set aside Rs 15 lakh per ward for a cleanliness drive on 10 arterial roads from October 28 to November 7. The list includes Carter Road, SV Road, Link Road and the Western Express Highway.", "loc": "Bandra West", "place": "Carter Road", "when": "28 Oct", "src": "Mumbai Live", "url": "https://www.mumbailive.com/en/environment/bmc-allocates-inr-15-lakh-per-ward-for-pre-diwali-cleanliness-drive-across-10-key-roads-in-mumbai-94877", "lat": 19.069927, "lng": 72.822801, "approx": true}, {"k": "notice", "sub": "opening-bar", "t": "SOCIAL opens at Sky City Mall, Borivali East", "b": "A new SOCIAL outlet has opened on the fourth floor of Sky City Mall on Dattapada Road. It is open daily from 11 am to midnight, at about Rs 1,500 for two.", "loc": "Borivali", "place": "SOCIAL, Sky City Mall", "when": "30 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/a-brand-new-socials-now-open-at-sky-city-mall-in-borivali-103026", "lat": 19.223861, "lng": 72.863589, "approx": false}, {"k": "notice", "sub": "opening-cafe", "t": "Harajuku Tokyo Cafe opens at Sky City Mall, Borivali East", "b": "Harajuku Tokyo Cafe is listed among new Mumbai openings at Sky City Mall, off the Western Express Highway. It is open from noon to 11 pm, at about Rs 2,500 for two.", "loc": "Borivali", "place": "Harajuku Tokyo Cafe, Sky City Mall", "when": "28 Oct", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-restaurants-in-mumbai-to-hangout-with-your-friends-in-november/", "lat": 19.223861, "lng": 72.863589, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "Santosham brings satvik South Indian food to Malad West", "b": "Santosham, a satvik South Indian restaurant, has opened at Raj Infinia, off Link Road near Movie Time. It is open daily from 7:30 am to 10:30 pm.", "loc": "Malad West", "place": "Santosham, Raj Infinia", "when": "30 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/santosham-brings-satvik-south-indian-food-to-mumbais-western-suburbs-103026", "lat": 19.185285, "lng": 72.835861, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "Makaan opens in Juhu with Gujarati home-style food", "b": "Makaan, serving a menu inspired by Gujarati home cooking, opened on October 20 at Amar Mahal on AD Road, near Chandan Cinema. A meal costs about Rs 1,000 to 1,200 for two.", "loc": "Juhu", "place": "Makaan, Amar Mahal", "when": "21 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/makaan-opens-in-mumbai-bringing-a-menu-inspired-by-gujarati-home-cooking-102126", "lat": 19.114739, "lng": 72.827077, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "Bengaluru Cafe opens on Gulmohar Road, Juhu", "b": "Bengaluru Cafe is listed among new Mumbai restaurants at 40, Gulmohar Cross Road No. 12, near Noble Chemist. It is open from 11 am to 11 pm, at about Rs 800 for two.", "loc": "Juhu", "place": "Bengaluru Cafe", "when": "28 Oct", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-restaurants-in-mumbai-to-hangout-with-your-friends-in-november/", "lat": 19.107021, "lng": 72.827528, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "Goma opens at Boolani Estate, Andheri West", "b": "Goma is listed among new Mumbai restaurants at Boolani Estate, off Link Road near T-Series in the Veera Desai Industrial Estate. It is open from noon to 1 am.", "loc": "Andheri West", "place": "Goma, Boolani Estate", "when": "28 Oct", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-restaurants-in-mumbai-to-hangout-with-your-friends-in-november/", "lat": 19.117249, "lng": 72.833968, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "Huzur opens off Linking Road, Bandra", "b": "Huzur has opened at the corner of 32nd and 36th Road, off Linking Road near National College. It is open from noon to midnight, at about Rs 2,000 for two.", "loc": "Bandra West", "place": "Huzur", "when": "28 Oct", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-restaurants-in-mumbai-to-hangout-with-your-friends-in-november/", "lat": 19.064822, "lng": 72.837311, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "Burgertory opens its first Mumbai store in Andheri West", "b": "Burgertory has opened at Boolani Estate, off Link Road opposite Aver Plaza, near T-Series. It is open from noon to 1 am, at about Rs 799 for two.", "loc": "Andheri West", "place": "Burgertory, Boolani Estate", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.117249, "lng": 72.833968, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "CinCin opens at Oberoi Garden City, Goregaon East", "b": "CinCin has opened at Oberoi Garden City, International Business Park, opposite the Western Express Highway. It is open from noon to 11:30 pm, at about Rs 4,000 for two.", "loc": "Goregaon East", "place": "CinCin, Oberoi Garden City", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.171455, "lng": 72.862769, "approx": false}, {"k": "notice", "sub": "opening-cafe", "t": "Bombay Island opens off Veera Desai Road, Andheri West", "b": "Bombay Island has opened at Chandok Unicorn, next to Tamarind Tiffin, off Veera Desai Road. It is open from 9 am to 10 pm, at about Rs 1,300 for two.", "loc": "Andheri West", "place": "Bombay Island, Chandok Unicorn", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.117249, "lng": 72.833968, "approx": true}, {"k": "notice", "sub": "opening-cafe", "t": "Thought Coffee opens on Chapel Road, Bandra West", "b": "Thought Coffee has opened at Pearl Heaven on Chapel Road, opposite Bandra Born, near Mount Mary. It is open from 7 am to 11 pm, at about Rs 400 for two.", "loc": "Bandra West", "place": "Thought Coffee, Pearl Heaven", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "notice", "sub": "opening-cafe", "t": "The Blondie House opens in Versova", "b": "The Blondie House, a Japanese-inspired all-day cafe, has opened on Harmehar Road in Aram Nagar Part 1, Versova, at about Rs 1,500 for two.", "loc": "Versova", "place": "The Blondie House", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.132178, "lng": 72.812653, "approx": false}, {"k": "notice", "sub": "opening-bar", "t": "Trapdoor, a speakeasy-style bar, opens in Versova", "b": "Trapdoor has opened at Bungalow 173 and 174, Aram Nagar Part 2, Versova. It is open from 6 pm to 1:30 am, at about Rs 2,000 for two.", "loc": "Versova", "place": "Trapdoor", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.132178, "lng": 72.812653, "approx": false}, {"k": "notice", "sub": "opening-cafe", "t": "That Grocery Cafe by Foodstories opens on Hill Road", "b": "That Grocery Cafe by Foodstories has opened on the ground floor of the Globus building on Hill Road, at about Rs 750 for two.", "loc": "Bandra West", "place": "That Grocery Cafe, Globus building", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/", "lat": 19.054928, "lng": 72.829295, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "The Dravidian opens its flagship on Hill Road", "b": "Ambros World Foods has opened The Dravidian, a vegetarian quick-service restaurant serving dishes from Karnataka, Kerala, Tamil Nadu and Andhra Pradesh, on Hill Road.", "loc": "Bandra West", "place": "The Dravidian", "when": "15 Oct", "src": "Local Samosa", "url": "https://www.localsamosa.com/news/local-eats-edit-october-third-week-2026-12676547", "lat": 19.054928, "lng": 72.829295, "approx": true}, {"k": "notice", "sub": "opening-cafe", "t": "Pastel, a Portuguese bakery and all-day cafe, in Chimbai Village", "b": "Pastel, a bakery and all-day cafe inside a Portuguese bungalow in Chimbai Village, is on Esquire India's October list of new openings.", "loc": "Bandra West", "place": "Pastel", "when": "14 Oct", "src": "Esquire India", "url": "https://www.esquireindia.co.in/food-and-drinks/what-to-eat/esquire-india-october-hotlist-new-restaurants-and-bars-across-india-fitour-n%C4%81m-chor-bizarre-and-more", "lat": 19.057105, "lng": 72.823971, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "The Alter Ego opens in Bandra West", "b": "The Alter Ego, with two concepts called Blanco and Noir, is on Esquire India's October list of new openings in Bandra West.", "loc": "Bandra West", "place": "The Alter Ego", "when": "14 Oct", "src": "Esquire India", "url": "https://www.esquireindia.co.in/food-and-drinks/what-to-eat/esquire-india-october-hotlist-new-restaurants-and-bars-across-india-fitour-n%C4%81m-chor-bizarre-and-more", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "notice", "sub": "opening-bar", "t": "Late Checkout opens a second outlet in Bandra", "b": "Chrome Hospitality has opened a second Late Checkout, a 6,000 sq ft venue at the former Monkey Bar address in Bandra.", "loc": "Bandra West", "place": "Late Checkout", "when": "30 Oct", "src": "Hotelier India", "url": "https://www.hotelierindia.com/development/chrome-hospitality-opens-second-late-checkout-outpost-in-mumbais-bandra", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "notice", "sub": "opening-bar", "t": "Black Lacquer, a London listening bar, opens at Terminal 2", "b": "Black Lacquer, an event space and listening room imported from London, is inside Roswyn at Terminal 2 of Mumbai airport. Time Out puts it at about Rs 4,800 for two.", "loc": "Andheri East", "place": "Black Lacquer, Roswyn, Terminal 2", "when": "22 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/bars-and-pubs/black-lacquer", "lat": 19.101357, "lng": 72.872593, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "The Powder Room opens on Linking Road", "b": "The Powder Room, pairing cocktails with a \"MediterrAsian\" menu, opened on Linking Road in early September.", "loc": "Bandra West", "place": "The Powder Room", "when": "7 Sep", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/the-powder-room-in-mumbai-marries-cocktails-with-a-mediterrasian-dining-experience-090726", "lat": 19.06167, "lng": 72.836025, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "House of Koobideh opens its first Mumbai outlet on SV Road", "b": "Bengaluru's House of Koobideh, serving Persian kebabs and adana rolls, opened its first Mumbai outlet on SV Road in Bandra West.", "loc": "Bandra West", "place": "House of Koobideh", "when": "12 Oct", "src": "Curly Tales", "url": "https://curlytales.com/india/food/bengalurus-house-of-koobideh-opens-st-outpost-in-mumbai-serving-adana-rolls-persian-kebabs-more/", "lat": 19.077784, "lng": 72.833563, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "FITOUR, a 14-seat tasting-menu restaurant, opens in Bandra West", "b": "Aspect Hospitality has opened FITOUR, a 14-seat tasting-menu restaurant behind an unmarked door in the basement of an Asian restaurant.", "loc": "Bandra West", "place": "FITOUR", "when": "5 Oct", "src": "Indian Retailer", "url": "https://www.indianretailer.com/news/aspect-hospitality-opens-fitour-mumbais-bandra-west", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "event", "sub": "comedy", "t": "Comedy Riff at Khar Comedy Club", "b": "An evening stand-up set at Khar Comedy Club.", "loc": "Khar", "place": "Khar Comedy Club", "when": "3 Nov", "src": "District", "url": "https://www.district.in/events/upcoming-events-in-mumbai", "lat": 19.055591, "lng": 72.827141, "approx": true}, {"k": "event", "sub": "comedy", "t": "Vipul Goyal Unleashed live in Mumbai", "b": "Stand-up comedian Vipul Goyal performs at Prabodhankar Thackeray Natya Mandir near Borivali station.", "loc": "Borivali", "place": "Prabodhankar Thackeray Natya Mandir", "when": "4 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/vipul-goyal-unleashed-live-in-mumbai/3900030754579000", "lat": 19.229813, "lng": 72.847138, "approx": true}, {"k": "event", "sub": "talk", "t": "Maritime India Conference and Expo 2026", "b": "A three-day maritime industry conference and trade expo at the Bombay Exhibition Centre.", "loc": "Goregaon East", "place": "Bombay Exhibition Centre, NESCO", "when": "2 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/exhibitions", "lat": 19.152491, "lng": 72.855024, "approx": false}, {"k": "event", "sub": "comedy", "t": "Meanwhile by Manjeet Sarkar at That Comedy Club", "b": "Manjeet Sarkar performs several shows at That Comedy Club on Pali Hill.", "loc": "Bandra West", "place": "That Comedy Club", "when": "6 Nov", "src": "District", "url": "https://www.district.in/events/upcoming-events-in-mumbai", "lat": 19.064913, "lng": 72.827033, "approx": true}, {"k": "event", "sub": "food", "t": "Vegan Mumbai Potluck", "b": "A free vegan potluck lunch in Bandra West.", "loc": "Bandra West", "place": "Bandra West", "when": "8 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/vegan-mumbai-potluck-2026/100002004063685431", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "event", "sub": "music", "t": "Akshar Akshar Tujhech Ahe, a Diwali special in Vile Parle", "b": "A Diwali special programme at Dinanath Mangeshkar Natyagruha.", "loc": "Vile Parle", "place": "Dinanath Mangeshkar Natyagruha", "when": "9 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/akshar-akshar-tujhech-ahe-diwali-vishesh-vileparle/3900030665699606", "lat": 19.100728, "lng": 72.844562, "approx": true}, {"k": "event", "sub": "music", "t": "Diwali Pahat Swartriveni", "b": "An early-morning Diwali Pahat music programme at Prabodhankar Thackeray auditorium.", "loc": "Borivali", "place": "Prabodhankar Thackeray Natya Mandir", "when": "10 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/diwali-pahat-swartriveni/3900030679807437", "lat": 19.229813, "lng": 72.847138, "approx": true}, {"k": "event", "sub": "comedy", "t": "RelationShit Advice with Raunaq Rajani", "b": "A comedy show by Raunaq Rajani at The Habitat.", "loc": "Khar", "place": "The Habitat", "when": "11 Nov", "src": "District", "url": "https://www.district.in/events/upcoming-events-in-mumbai", "lat": 19.055591, "lng": 72.827141, "approx": true}, {"k": "event", "sub": "music", "t": "Bollywood Musical Jashn, season 4", "b": "An evening of Bollywood music in Borivali West organised by Ravi Kadali.", "loc": "Borivali", "place": "Borivali West", "when": "13 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/bollywood-musical-jashn-season-4/200030852894156", "lat": 19.229813, "lng": 72.847138, "approx": true}, {"k": "event", "sub": "kids", "t": "Kids trinket tray making workshop by Artbeat Studio", "b": "A short craft workshop for children at the Baskin Robbins outlet on SV Road.", "loc": "Kandivali", "place": "Baskin Robbins, Shreeji Darshan", "when": "14 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/kids-trinkets-tray-making-workshop-artbeat-studio/3900030906191928", "lat": 19.214014, "lng": 72.837292, "approx": true}, {"k": "event", "sub": "religious", "t": "Chhath Puja at Juhu", "b": "A Chhath Puja gathering listed at Juhu.", "loc": "Juhu", "place": "Juhu", "when": "14 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/chhath-puja-mumbai-nagriya-me/200029857085809", "lat": 19.102652, "lng": 72.824679, "approx": true}, {"k": "event", "sub": "music", "t": "Tum Bin Jaoon Kahan", "b": "A music evening at Dinanath Mangeshkar Natyagruha.", "loc": "Vile Parle", "place": "Dinanath Mangeshkar Natyagruha", "when": "15 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/tum-bin-jaoon-kahan/3900030568718459", "lat": 19.100728, "lng": 72.844562, "approx": true}, {"k": "event", "sub": "talk", "t": "Orientation 2 to the Living Philosophy course", "b": "An introductory session to the Living Philosophy course at New Acropolis Bandra.", "loc": "Bandra West", "place": "New Acropolis Bandra", "when": "17 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/orientation-2-to-living-philosophy-course-an-invitation-to-a-school-of-philosophy-tickets/80001052326421", "lat": 19.058336, "lng": 72.830267, "approx": true}, {"k": "event", "sub": "theatre", "t": "Lillian Wenker: Bangtail", "b": "A run of evening shows at Ranipur Theatre Co. in Pali Market.", "loc": "Bandra West", "place": "Ranipur Theatre Co.", "when": "18 Nov", "src": "District", "url": "https://www.district.in/events/upcoming-events-in-mumbai", "lat": 19.062785, "lng": 72.829391, "approx": true}, {"k": "event", "sub": "talk", "t": "Warehouse and Cold Storage Management Systems expo", "b": "A three-day trade expo on warehousing and cold storage at the Bombay Exhibition Centre.", "loc": "Goregaon East", "place": "Bombay Exhibition Centre, NESCO", "when": "20 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/exhibitions", "lat": 19.152491, "lng": 72.855024, "approx": false}, {"k": "event", "sub": "comedy", "t": "Beta Male by Varun Nair", "b": "Stand-up by Varun Nair at The Habitat.", "loc": "Khar", "place": "The Habitat", "when": "21 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/comedy", "lat": 19.055591, "lng": 72.827141, "approx": true}, {"k": "event", "sub": "comedy", "t": "3AM Thoughts by Manjeet Thakur", "b": "A late-night stand-up set at Ink-A-Laugh Comedy Club on SV Road.", "loc": "Vile Parle", "place": "Ink-A-Laugh Comedy Club, Queens Lawn Building", "when": "21 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/3am-thoughts-by-manjeet-thakur/3900030947196120", "lat": 19.103908, "lng": 72.840301, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Kala Ghoda air quality unhealthy, US AQI 166", "b": "IQAir's Mumbai station list showed a US AQI of 166 (unhealthy) at the Kala Ghoda monitor at 01:30 IST on 3 November 2026. Readings change through the day, so treat this as a snapshot.", "loc": "Kala Ghoda", "place": "Kala Ghoda air quality monitor", "when": "3 Nov", "src": "IQAir, Mumbai air quality", "url": "https://www.iqair.com/air-quality/india/maharashtra/mumbai", "lat": 18.928458, "lng": 72.832599, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Byculla air quality unhealthy for sensitive groups, US AQI 134", "b": "IQAir's Mumbai station list showed a US AQI of 134 (unhealthy for sensitive groups) at the Byculla (BMC) monitor at 01:30 IST on 3 November 2026. Readings change through the day, so treat this as a snapshot.", "loc": "Byculla", "place": "Byculla (BMC) air quality monitor", "when": "3 Nov", "src": "IQAir, Mumbai air quality", "url": "https://www.iqair.com/air-quality/india/maharashtra/mumbai", "lat": 18.976622, "lng": 72.832794, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Colaba air quality unhealthy for sensitive groups, US AQI 115", "b": "IQAir's Mumbai station list showed a US AQI of 115 (unhealthy for sensitive groups) at the Colaba (MPCB) monitor at 01:30 IST on 3 November 2026. Readings change through the day, so treat this as a snapshot.", "loc": "Colaba", "place": "Colaba (MPCB) air quality monitor", "when": "3 Nov", "src": "IQAir, Mumbai air quality", "url": "https://www.iqair.com/air-quality/india/maharashtra/mumbai", "lat": 18.915091, "lng": 72.825969, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Worli air quality unhealthy for sensitive groups, US AQI 115", "b": "IQAir's Mumbai station list showed a US AQI of 115 (unhealthy for sensitive groups) at the Worli (MPCB) monitor at 01:30 IST on 3 November 2026. Readings change through the day, so treat this as a snapshot.", "loc": "Worli", "place": "Worli (MPCB) air quality monitor", "when": "3 Nov", "src": "IQAir, Mumbai air quality", "url": "https://www.iqair.com/air-quality/india/maharashtra/mumbai", "lat": 18.998841, "lng": 72.817033, "approx": true}, {"k": "problem", "sub": "garbage", "t": "BMC installs first AI-powered CCTV camera in Mahim to catch litterers", "b": "BMC put its first AI camera at Gajanan Vatika in Mahim, a garbage-vulnerable point where people dump waste. The civic body plans to cover 283 garbage hotspots citywide, including 23 in G-North (Dadar-Mahim) and 19 in G-South (Worli).", "loc": "Mahim", "place": "Gajanan Vatika", "when": "30 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-bmc-installs-first-ai-powered-cctv-camera-in-mahim-to-catch-litterers-plans-coverage-across-283-garbage-hotspots-video", "lat": 19.042772, "lng": 72.840793, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Boil and filter drinking water for seven days, A ward", "b": "BMC asked residents of the Naval Dockyard and BPT areas of A ward to boil and filter drinking water for seven days from 27 October. Compartment 2 of the Yewai balancing reservoir at Pise-Panjrapur was put back into service after repairs, which can affect water quality.", "loc": "Colaba", "place": null, "when": "28 Oct", "src": "Curly Tales (BMC advisory)", "url": "https://curlytales.com/mumbai-water-alert-bmc-advises-residents-in-these-wards-to-boil-and-filter-water-for-days/", "lat": 18.926995, "lng": 72.839035, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Boil and filter drinking water for seven days, B ward", "b": "BMC asked residents of all of B ward to boil and filter drinking water for seven days from 27 October. Compartment 2 of the Yewai balancing reservoir at Pise-Panjrapur was put back into service after repairs, which can affect water quality.", "loc": "Dongri", "place": null, "when": "28 Oct", "src": "Curly Tales (BMC advisory)", "url": "https://curlytales.com/mumbai-water-alert-bmc-advises-residents-in-these-wards-to-boil-and-filter-water-for-days/", "lat": 18.962227, "lng": 72.836795, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Boil and filter drinking water for seven days, E ward", "b": "BMC asked residents of all of E ward to boil and filter drinking water for seven days from 27 October. Compartment 2 of the Yewai balancing reservoir at Pise-Panjrapur was put back into service after repairs, which can affect water quality.", "loc": "Byculla", "place": null, "when": "28 Oct", "src": "Curly Tales (BMC advisory)", "url": "https://curlytales.com/mumbai-water-alert-bmc-advises-residents-in-these-wards-to-boil-and-filter-water-for-days/", "lat": 18.976622, "lng": 72.832794, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Boil and filter drinking water for seven days, F South ward", "b": "BMC asked residents of all of F-South ward to boil and filter drinking water for seven days from 27 October. Compartment 2 of the Yewai balancing reservoir at Pise-Panjrapur was put back into service after repairs, which can affect water quality.", "loc": "Parel", "place": null, "when": "28 Oct", "src": "Curly Tales (BMC advisory)", "url": "https://curlytales.com/mumbai-water-alert-bmc-advises-residents-in-these-wards-to-boil-and-filter-water-for-days/", "lat": 18.988459, "lng": 72.839391, "approx": true}, {"k": "notice", "sub": "advisory", "t": "Boil and filter drinking water for seven days, F North ward", "b": "BMC asked residents of all of F-North ward to boil and filter drinking water for seven days from 27 October. Compartment 2 of the Yewai balancing reservoir at Pise-Panjrapur was put back into service after repairs, which can affect water quality.", "loc": "Matunga", "place": null, "when": "28 Oct", "src": "Curly Tales (BMC advisory)", "url": "https://curlytales.com/mumbai-water-alert-bmc-advises-residents-in-these-wards-to-boil-and-filter-water-for-days/", "lat": 19.027436, "lng": 72.850147, "approx": true}, {"k": "notice", "sub": "transit", "t": "Sion railway overbridge opens to commuters", "b": "The rebuilt Sion railway overbridge, replacing the 1912 bridge that was shut for about two years, was inaugurated on 22 October 2026. It restores the east-west road link across the tracks near Sion station.", "loc": "Sion", "place": "Sion railway overbridge", "when": "22 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/mumbais-sion-vidyavihar-and-goregaon-flyovers-finally-opens-for-commuters-102226", "lat": 19.046521, "lng": 72.863283, "approx": true}, {"k": "notice", "sub": "traffic", "t": "Traffic notification for J. Kumar Infraprojects work in Dadar traffic division", "b": "Mumbai Traffic Police issued Notification No. 218 on 21 October 2026 for work by J. Kumar Infraprojects Limited in the Dadar traffic division, in force until further orders. The affected roads are in the notice PDF, which could not be read, so check it before travelling.", "loc": "Dadar", "place": null, "when": "21 Oct", "src": "Mumbai Traffic Police public notices", "url": "https://mtperp.mahatrafficechallan.gov.in/PublicNotice.htm", "lat": 19.019227, "lng": 72.842848, "approx": true}, {"k": "notice", "sub": "opening-other", "t": "The Ballard Pier opens with restaurants, bars and shops", "b": "The Ballard Pier Downtown Experience Centre on Shoorji Vallabhdas Road opened in phases from 23 October 2026. Announced tenants include Blue Frog, Ministry of Crab, Wolf of Grain, Nicobar and a seaside park; availability may vary.", "loc": "Fort", "place": "The Ballard Pier", "when": "23 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/the-ballard-pier-opens-in-mumbai-with-restaurants-bars-and-more-102326", "lat": 18.931825, "lng": 72.836138, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "Madwater Brewery opens in Dadar, with more than 15 craft beers on offer", "b": "Madwater Brewery opened on 16 October at The Ruby, Senapati Bapat Marg, Dadar West. It is open daily from 12pm to 1am.", "loc": "Dadar West", "place": "The Ruby", "when": "19 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/news/madwater-brewery-opens-in-dadar-with-more-than-15-craft-beers-on-offer-101926", "lat": 19.012092, "lng": 72.836042, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "La Panthera Eros opens in the Eros building, Churchgate", "b": "La Panthera Eros serves Spanish pintxos, tapas, fermented pizzas and pastas on the first floor of the Eros Theatre building on Maharshi Karve Road. Curly Tales puts the cost at about Rs 3,500 for two.", "loc": "Churchgate", "place": "Eros Theatre building", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/amp/", "lat": 18.932239, "lng": 72.827939, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "Jùun, a Cantonese restaurant, opens in the Eros building, Churchgate", "b": "Jùun serves Cantonese food inspired by Hong Kong and Mumbai in the Eros building at Churchgate. FPJ lists the cost at about Rs 3,500 for two.", "loc": "Churchgate", "place": "Eros building", "when": "8 Sep", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/lifestyle/10-new-restaurants-in-mumbai-you-need-check-out-this-month", "lat": 18.932239, "lng": 72.827939, "approx": false}, {"k": "notice", "sub": "opening-cafe", "t": "Vanilla Miel pâtisserie café opens at Lodha Signet, Lower Parel", "b": "Vanilla Miel, a pâtisserie café serving breakfast, brunch, savoury plates and desserts, is on the ground floor of Lodha Signet in Lower Parel. Curly Tales puts the cost at about Rs 2,000 for two.", "loc": "Lower Parel", "place": "Lodha Signet", "when": "29 Sep", "src": "Curly Tales", "url": "https://curlytales.com/india/food/new-mumbai-restaurants-in-october-youll-want-to-tell-your-friends-about/amp/", "lat": 19.003211, "lng": 72.829082, "approx": false}, {"k": "notice", "sub": "opening-restaurant", "t": "Gulmurg reopens at The Shalimar Hotel, Kemps Corner", "b": "Gulmurg has reopened at The Shalimar Hotel in Kemps Corner with Indian classics and new regional and seasonal dishes. FPJ lists the cost at about Rs 2,000 for two.", "loc": "Kemps Corner", "place": "The Shalimar Hotel", "when": "8 Sep", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/lifestyle/10-new-restaurants-in-mumbai-you-need-check-out-this-month", "lat": 18.963753, "lng": 72.806862, "approx": true}, {"k": "notice", "sub": "opening-restaurant", "t": "Fieno, a rustic Italian restaurant, opens in Amarchand Mansion, Colaba", "b": "Esquire India's October hotlist names Fieno, a rustic Italian restaurant inside Amarchand Mansion in Colaba, among the month's new openings.", "loc": "Colaba", "place": "Amarchand Mansion", "when": "14 Oct", "src": "Esquire India", "url": "https://www.esquireindia.co.in/food-and-drinks/what-to-eat/esquire-india-october-hotlist-new-restaurants-and-bars-across-india-fitour-nām-chor-bizarre-and-more", "lat": 18.925382, "lng": 72.830575, "approx": false}, {"k": "notice", "sub": "opening-cafe", "t": "Grey Soul Coffee Roasters opens its third flagship in Kala Ghoda", "b": "Grey Soul Coffee Roasters announced that its third flagship café, in Kala Ghoda, Fort, is now open.", "loc": "Kala Ghoda", "place": "Grey Soul Coffee Roasters", "when": "22 Sep", "src": "Grey Soul Coffee (business blog)", "url": "https://greysoul.coffee/blogs/news/grey-soul-coffee-roasters-kala-ghoda", "lat": 18.928458, "lng": 72.832599, "approx": true}, {"k": "event", "sub": "music", "t": "NCPA International Jazz Festival 2026", "b": "Three nights of jazz at the Jamshed Bhabha Theatre: Francesca Tandoi Trio (20 Nov, 7pm), Nicole Zuraitis Quartet (21 Nov, 6:30pm) and Thana Alexa with Antonio Sánchez (22 Nov, 6:30pm).", "loc": "Nariman Point", "place": "Jamshed Bhabha Theatre, NCPA", "when": "20 Nov", "src": "NCPA Mumbai", "url": "https://www.ncpamumbai.com/event/ncpa-international-jazz-festival-2026/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "music", "t": "Evergreen Romantic Songs by Javed Ali", "b": "Singer Javed Ali performs a programme of romantic Hindi film songs at NCPA. See the NCPA listing for time and tickets.", "loc": "Nariman Point", "place": "NCPA", "when": "19 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "theatre", "t": "META Festival 2026", "b": "The Mahindra Excellence in Theatre Awards festival opens at NCPA on 12 November with a run of nominated plays. Check the NCPA listing for the full schedule.", "loc": "Nariman Point", "place": "NCPA", "when": "12 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "theatre", "t": "The Old Man and the Sea, Kathakali of Morrow", "b": "A Kathakali adaptation of Hemingway's The Old Man and the Sea, listed under theatre at NCPA.", "loc": "Nariman Point", "place": "NCPA", "when": "12 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "film", "t": "Movies Under the Stars: Calamity Jane (1953)", "b": "An open-air screening of the 1953 musical Calamity Jane at NCPA.", "loc": "Nariman Point", "place": "NCPA", "when": "19 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "art", "t": "Will the Bulbul Sing to the Flowers Again?", "b": "A photography exhibition at NCPA opening on 6 November.", "loc": "Nariman Point", "place": "NCPA", "when": "6 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "workshop", "t": "NCPA Masterclass by Guru Sharmila Biswas: Sthiti", "b": "An Odissi dance masterclass led by Guru Sharmila Biswas at NCPA.", "loc": "Nariman Point", "place": "NCPA", "when": "12 Nov", "src": "NCPA Mumbai", "url": "https://ncpamumbai.com/", "lat": 18.924956, "lng": 72.819766, "approx": false}, {"k": "event", "sub": "nightlife", "t": "Anyma ÆDEN Tour, Mumbai", "b": "Electronic artist Anyma brings the ÆDEN show to the Polo Ground at Mahalaxmi Race Course. Gates listed from 7pm.", "loc": "Mahalaxmi", "place": "Mahalaxmi Race Course, Polo Ground", "when": "21 Nov", "src": "AllEvents.in", "url": "https://allevents.in/mumbai/november", "lat": 18.985204, "lng": 72.820598, "approx": false}, {"k": "event", "sub": "art", "t": "Art Mumbai 2026", "b": "The Art Mumbai fair returns to Mahalaxmi Racecourse from 12 to 15 November.", "loc": "Mahalaxmi", "place": "Mahalaxmi Racecourse", "when": "12 Nov", "src": "Mumbai2Go", "url": "https://mumbai2go.in/", "lat": 18.985204, "lng": 72.820598, "approx": false}, {"k": "event", "sub": "music", "t": "Osman Mir in Mumbai", "b": "Gujarati singer Osman Mir performs live at the Nehru Centre Auditorium in Worli.", "loc": "Worli", "place": "Nehru Centre Auditorium", "when": "13 Nov", "src": "AllEvents.in", "url": "https://allevents.in/mumbai/november", "lat": 19.00842, "lng": 72.819171, "approx": true}, {"k": "event", "sub": "theatre", "t": "Sardar: The Architect of United India", "b": "A stage production on Sardar Vallabhbhai Patel, running at the Nehru Centre Auditorium in Worli from 20 to 28 November.", "loc": "Worli", "place": "Nehru Centre Auditorium", "when": "20 Nov", "src": "Local Samosa", "url": "https://www.localsamosa.com/explore/mumbai-events-in-november-2026-12756671", "lat": 19.00842, "lng": 72.819171, "approx": true}, {"k": "event", "sub": "talk", "t": "The Human Upgrade Fest, Mumbai 2026", "b": "A one-day wellness and self-improvement festival at the National Sports Club of India (NSCI) in Worli, starting at 10am.", "loc": "Worli", "place": "National Sports Club of India (NSCI)", "when": "15 Nov", "src": "StayHappening", "url": "https://stayhappening.com/mumbai", "lat": 18.998841, "lng": 72.817033, "approx": true}, {"k": "event", "sub": "theatre", "t": "Sanam Teri Kasam", "b": "A show titled Sanam Teri Kasam at Ravindra Natya Mandir, Prabhadevi, at 8:30pm.", "loc": "Prabhadevi", "place": "Ravindra Natya Mandir", "when": "22 Nov", "src": "StayHappening", "url": "https://stayhappening.com/mumbai", "lat": 19.015268, "lng": 72.830281, "approx": false}, {"k": "event", "sub": "music", "t": "Hrudaysparsh", "b": "A morning programme titled Hrudaysparsh at Swatantryaveer Savarkar Smarak Sabhagriha, from 10am to 1pm.", "loc": "Dadar West", "place": "Swatantryaveer Savarkar Smarak Sabhagriha", "when": "7 Nov", "src": "AllEvents.in", "url": "https://allevents.in/mumbai/all", "lat": 19.023889, "lng": 72.838224, "approx": true}, {"k": "event", "sub": "music", "t": "Diwali Pahat", "b": "A dawn Diwali music concert (Diwali Pahat) at Yashwant Natya Mandir, Matunga, from 6:45am to 9:15am.", "loc": "Matunga", "place": "Yashwant Natya Mandir", "when": "7 Nov", "src": "AllEvents.in", "url": "https://allevents.in/mumbai/november", "lat": 19.026863, "lng": 72.843147, "approx": false}, {"k": "event", "sub": "music", "t": "Abhanga Repost Diwali Pahat, Matunga", "b": "A Diwali Pahat morning concert by Abhanga Repost at Yashwant Natya Mandir, Matunga, from 7am.", "loc": "Matunga", "place": "Yashwant Natya Mandir", "when": "9 Nov", "src": "StayHappening", "url": "https://stayhappening.com/mumbai", "lat": 19.026863, "lng": 72.843147, "approx": false}, {"k": "event", "sub": "religious", "t": "Dance in Devotion with Soulful Bhajans", "b": "An evening of devotional bhajans and dance at Shanmukhananda Hall, from 6pm to 9pm.", "loc": "Sion", "place": "Shanmukhananda Hall", "when": "15 Nov", "src": "AllEvents.in", "url": "https://allevents.in/mumbai/november", "lat": 19.031682, "lng": 72.857737, "approx": true}, {"k": "event", "sub": "religious", "t": "Echoes of Bhakti: Heal Your Soul with Swati Mishra", "b": "Singer Swati Mishra performs a devotional concert at Shanmukhananda Hall.", "loc": "Sion", "place": "Shanmukhananda Hall", "when": "24 Nov", "src": "Local Samosa", "url": "https://www.localsamosa.com/explore/mumbai-events-in-november-2026-12756671", "lat": 19.031682, "lng": 72.857737, "approx": true}, {"k": "event", "sub": "comedy", "t": "Sharon Verma Live: Weak Independent Woman", "b": "Comedian Sharon Verma performs her stand-up show at Sophia Bhabha Auditorium.", "loc": "Cumballa Hill", "place": "Sophia Bhabha Auditorium", "when": "14 Nov", "src": "Local Samosa", "url": "https://www.localsamosa.com/explore/mumbai-events-in-november-2026-12756671", "lat": 18.969715, "lng": 72.801505, "approx": true}, {"k": "event", "sub": "market", "t": "BooksByWeight sale at Sunderbai Hall, Churchgate", "b": "A books-sold-by-weight sale at Sunderbai Hall, Churchgate, from 14 to 18 November, opening at 9am.", "loc": "Churchgate", "place": "Sunderbai Hall", "when": "14 Nov", "src": "StayHappening", "url": "https://stayhappening.com/mumbai", "lat": 18.93548, "lng": 72.827174, "approx": true}, {"k": "event", "sub": "art", "t": "Diwali Décor and Gifting art collection", "b": "A Diwali décor and gifting art collection at Art Plaza Gallery in the Fort and Kala Ghoda area, running until 8 November. Entry is free.", "loc": "Kala Ghoda", "place": "Art Plaza Gallery", "when": "2 Nov", "src": "Mumbai2Go", "url": "https://mumbai2go.in/", "lat": 18.928458, "lng": 72.832599, "approx": true}, {"k": "event", "sub": "art", "t": "Amores by José Zendejas Foyo", "b": "An exhibition of work by José Zendejas Foyo at Anupa Mehta Contemporary Art in Colaba, open 11am to 6pm until 18 November. Entry is free.", "loc": "Colaba", "place": "Anupa Mehta Contemporary Art", "when": "8 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/mumbai-events-in-october", "lat": 18.915091, "lng": 72.825969, "approx": true}, {"k": "event", "sub": "art", "t": "Satish Gujral: The Modernist Returns", "b": "A Satish Gujral exhibition at the National Gallery of Modern Art, Fort, running until 20 November. Entry is free.", "loc": "Fort", "place": "National Gallery of Modern Art", "when": "9 Oct", "src": "Time Out Mumbai", "url": "https://www.timeout.com/mumbai/mumbai-events-in-october", "lat": 18.925838, "lng": 72.831385, "approx": false}, {"k": "problem", "sub": "air", "t": "Ghatkopar residents troubled by construction dust", "b": "Residents of Pantnagar and other parts of Ghatkopar East say cement dust from building projects running for about four years settles on roads and affects children, senior citizens and people with asthma. The N Ward assistant commissioner says notices have been issued to builders and penalties will follow if dust controls are not in place within seven days.", "loc": "Ghatkopar East", "place": "Pant Nagar", "when": "27 Oct", "src": "eSakal (Marathi)", "url": "https://www.esakal.com/mumbai/todays-latest-marathi-news-mum26i94174-txt-mumbai-today-20261027110216", "lat": 19.08333, "lng": 72.911504, "approx": true}, {"k": "problem", "sub": "pothole", "t": "Water tankers cause traffic jams in Mulund West", "b": "Residents say water tankers running through the day on Sardar Vallabhbhai Patel Road and around Kasturba Road cause congestion and have left large potholes, damaged footpaths and broken drain covers. The Mulund traffic division says it will raise the matter with the T Ward office.", "loc": "Mulund West", "place": null, "when": "27 Oct", "src": "eSakal (Marathi)", "url": "https://www.esakal.com/mumbai/todays-latest-marathi-news-mum26i94181-txt-mumbai-today-20261027122703", "lat": 19.172004, "lng": 72.955808, "approx": true}, {"k": "problem", "sub": "air", "t": "BMC issues second warning to 7 RMC plants over pollution violations", "b": "An inspection on 23 October found seven ready-mix concrete plants in N Ward without tyre washing, green-net covers, fogging or water sprinkling. The BMC issued second notices on 27 October giving them seven days to comply, with photo proof, or face legal action.", "loc": "Ghatkopar", "place": null, "when": "28 Oct", "src": "Free Press Journal", "url": "https://www.freepressjournal.in/mumbai/mumbai-bmc-issues-second-warning-to-7-rmc-plants-over-pollution-violations-gives-7-days-to-comply", "lat": 19.083344, "lng": 72.912325, "approx": true}, {"k": "problem", "sub": "air", "t": "BMC and MPCB seal RMC plant in Govandi-Mankhurd", "b": "The BMC and the Maharashtra Pollution Control Board jointly sealed a ready-mix concrete plant in M-East ward after corporators raised residents' long-standing dust complaints. One corporator says three other allegedly illegal RMC plants in the area should also be shut.", "loc": "Govandi", "place": null, "when": "23 Oct", "src": "Navbharat Live (Hindi)", "url": "https://navbharatlive.com/maharashtra/mumbai/govandi-mankhurd-pollution-bmc-mpcb-seal-rmc-plant-rgs12", "lat": 19.055369, "lng": 72.91507, "approx": true}, {"k": "notice", "sub": "transit", "t": "Mega block on slow lines between CSMT and Vidyavihar", "b": "On Sunday 1 November the up and down slow lines between CSMT and Vidyavihar were blocked from 10:55 am to 3:55 pm, with slow trains run on the fast lines. Trans-Harbour trains between Thane and Vashi or Nerul were cancelled from 11:10 am to 4:10 pm.", "loc": "Vidyavihar", "place": "Vidyavihar railway station", "when": "31 Oct", "src": "Aryan Age", "url": "https://www.aryanage.com/article/50020/mumbai-local-train-mega-block-on-november-1-central-railway", "lat": 19.079585, "lng": 72.89762, "approx": false}, {"k": "notice", "sub": "traffic", "t": "Vidyavihar bridge opens, linking Ramchandra Chemburkar Marg and LBS Marg", "b": "The new bridge at Vidyavihar, connecting Ramchandra Chemburkar Marg on the east with LBS Marg on the west, was inaugurated on 22 October. It is expected to cut the east-west crossing from about 30 minutes to 10 and ease pressure on the Ghatkopar railway overbridge.", "loc": "Vidyavihar", "place": "Vidyavihar railway bridge", "when": "22 Oct", "src": "Mumbai Live", "url": "https://www.mumbailive.com/en/infrastructure/3-new-bridges-inaugurated-in-mumbai-infra-push-to-cut-city-travel-time-says-fadnavis-94783", "lat": 19.079585, "lng": 72.89762, "approx": true}, {"k": "notice", "sub": "traffic", "t": "Night traffic diversions at Bhandup-Sonapur junction until 31 December", "b": "Traffic in both directions is diverted at Bhandup-Sonapur junction on LBS Marg every night from 11 pm to 6 am while MMRDA installs girders for Shangrila station on Metro Line 4. Motorists are routed via Bhandup Village Road, Subhash Nagar Road and Mulund Link Road; emergency vehicles are exempt.", "loc": "Bhandup West", "place": "Bhandup-Sonapur Junction", "when": "28 Oct", "src": "Free Press Journal (Marathi)", "url": "https://marathi.freepressjournal.in/mumbai/mumbai-traffic-update-bhandup-sonapur-junction-night-diversion-lbs-marg-october-28-december-31-2026", "lat": 19.149024, "lng": 72.937919, "approx": true}, {"k": "notice", "sub": "advisory", "t": "BMC dust-clearing drive on major roads until 7 November", "b": "From 28 October to 7 November every ward is clearing dust and construction debris from roads, dividers and footpaths using power sweepers, sprinklers and misting machines. Roads named include the JVLR, Santacruz-Chembur Link Road, BKC connector, Eastern Express Highway, Ghatkopar-Mankhurd Road and Sion-Mankhurd Road.", "loc": "BKC", "place": "BKC connector", "when": "29 Oct", "src": "Navbharat Live (Hindi)", "url": "https://navbharatlive.com/maharashtra/mumbai/bmc-diwali-dust-cleaning-drive-mumbai-notices-to-7-pune-rmc-plants-rgs12", "lat": 19.059267, "lng": 72.861326, "approx": true}, {"k": "notice", "sub": "transit", "t": "Signal failures at Kanjurmarg disrupt local trains", "b": "Signal failures at Kanjurmarg were among several technical problems that disrupted Central line local services on 26 October.", "loc": "Kanjurmarg", "place": "Kanjur Marg railway station", "when": "27 Oct", "src": "LatestLY", "url": "https://www.latestly.com/india/news/mumbai-latest-news-today-on-october-27th-2026-jarange-allegations-sit-air-pollution-train-disruptions-7657811.html", "lat": 19.12826, "lng": 72.928156, "approx": false}, {"k": "notice", "sub": "advisory", "t": "Electric autos to collect garbage from Kurla's slums and narrow lanes", "b": "The BMC's solid waste department has awarded a contract, worth about ₹1 crore, to lease six electric autorickshaws for garbage collection in L Ward. Officials say they will help clear waste that piles up in dense settlements, narrow lanes and around bins.", "loc": "Kurla", "place": null, "when": "31 Oct", "src": "Prahaar (Marathi)", "url": "https://www.prahaar.in/2026/10/31/garbage-in-the-slums-and-narrow-lanes-of-kurla-area-is-now-clean/", "lat": 19.06528, "lng": 72.87938, "approx": true}, {"k": "event", "sub": "art", "t": "AD Design Show 2026 - Mumbai", "b": "A design showcase with immersive spaces, brand displays, installations, food and cultural programming. Day and season passes are sold online.", "loc": "BKC", "place": "Jio World Convention Centre, G Block", "when": "13 Nov", "src": "AllEvents", "url": "https://allevents.in/mumbai/ad-design-show-2026-mumbai/3900030024917405", "lat": 19.064192, "lng": 72.867442, "approx": false}, {"k": "event", "sub": "music", "t": "Unplugged Wednesday ft. Aarush Parihar at The Stables", "b": "A weekly unplugged music night at The Stables in the Peninsula Redpine hotel, Marol. The listing shows it every Wednesday from 9 to 11 pm.", "loc": "Marol", "place": "The Stables, Peninsula Redpine", "when": "4 Nov", "src": "District", "url": "https://www.district.in/events/unplugged-wednesday-ft-aarush-parihar-at-the-stables-aug5-2026-buy-tickets", "lat": 19.11722, "lng": 72.882342, "approx": true}, {"k": "event", "sub": "music", "t": "Friday Kick off ft. Aangan experience at The Stables", "b": "A weekly Friday live music night at The Stables in the Peninsula Redpine hotel, Marol. The listing shows it every Friday from 9 to 11 pm.", "loc": "Marol", "place": "The Stables, Peninsula Redpine", "when": "6 Nov", "src": "District", "url": "https://www.district.in/events/riffs-and-rhythm-ft-aangan-experience-at-the-stables-mar13-2026-buy-tickets", "lat": 19.11722, "lng": 72.882342, "approx": true}, {"k": "event", "sub": "music", "t": "Mehfil Monday at The Stables", "b": "A weekly Monday mehfil music night at The Stables in the Peninsula Redpine hotel, Marol; the current listing names Shivraj Bhul. It runs every Monday from 9 to 11 pm.", "loc": "Marol", "place": "The Stables, Peninsula Redpine", "when": "9 Nov", "src": "District", "url": "https://www.district.in/events/mehfil-monday-ft-shubham-dwivedi-at-the-stables-aug3-2026-buy-tickets", "lat": 19.11722, "lng": 72.882342, "approx": true}];
+
+/* ---------- projection: local metres around Bandra, x east, z south ---------- */
+const R = 6378137, LAT0 = 19.0559, LON0 = 72.8296, K = Math.cos(LAT0 * Math.PI / 180);
+const mercX = (lon) => R * lon * Math.PI / 180;
+const mercY = (lat) => R * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+const X0 = mercX(LON0), Y0 = mercY(LAT0), C = 2 * Math.PI * R;
+const ll = (lon, lat) => [(mercX(lon) - X0) * K, -(mercY(lat) - Y0) * K];
+const toLL = (x, z) => [((x / K + X0) / R) * 180 / Math.PI, (2 * Math.atan(Math.exp((-z / K + Y0) / R)) - Math.PI / 2) * 180 / Math.PI];
+const tileXY = (lon, lat, zm) => { const n = 2 ** zm; const x = (lon + 180) / 360 * n; const r = lat * Math.PI / 180; const y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n; return [x, y]; };
+
+/* ---------- palette (onboarding: sand ground, warm white, olive, peach) ---------- */
+const COL = {
+  sky: 0xF3EBDF, ground: 0xE7D6BB, water: 0x9FC4D3, waterDeep: 0x8DB7C8, park: 0xB4C07C, wood: 0x9BAD68, pitch: 0xC3CD8C,
+  civic: 0xF2D6BF, sand: 0xF0DDB5, road: 0xFFFFFF, roadMajor: 0xFFFFFF, casing: 0xCFB998, rail: 0xC9B79E,
+  bld: 0xFFFDF9, bldA: 0xF8CDAE, bldB: 0xFFE6D4, trunk: 0xA9866A, canopy: 0x8FA052, canopy2: 0x9DAE5E,
+};
+const KIND = { problem: '#E4491C', event: '#6B48B8', deal: '#B5306E', notice: '#B7790B' };
+const KNAME = { problem: 'Problem', event: 'Event', deal: 'Deal', notice: 'Notice' };
+
+/* ---------- renderer, scene, camera ---------- */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const labelR = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelR.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COL.sky);
+scene.fog = new THREE.Fog(COL.sky, 3000, 9000);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 5, 200000);
+
+const hemi = new THREE.HemisphereLight(0xFFF6EA, 0xC9B79A, 1.25); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xFFF1DE, 2.7);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
+const SC = sun.shadow.camera; SC.left = -700; SC.right = 700; SC.top = 700; SC.bottom = -700; SC.near = 10; SC.far = 4000;
+scene.add(sun, sun.target);
+
+const controls = new MapControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.09;
+controls.screenSpacePanning = false; controls.minDistance = 120; controls.maxDistance = 70000;
+controls.maxPolarAngle = THREE.MathUtils.degToRad(68); controls.zoomSpeed = 1.1;
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+
+/* ---------- ground ---------- */
+const flat = (color, order) => { const m = new THREE.MeshLambertMaterial({ color, depthWrite: false }); m.userData.order = order; return m; };
+const MAT = {
+  ground: flat(COL.ground, 0), civic: flat(COL.civic, 1), sand: flat(COL.sand, 1), park: flat(COL.park, 2), wood: flat(COL.wood, 2), pitch: flat(COL.pitch, 2),
+  water: flat(COL.water, 3), casing: flat(COL.casing, 4), rail: flat(COL.rail, 4), road: flat(COL.road, 5), roadMajor: flat(COL.roadMajor, 6),
+  bld: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }),
+  canopy: new THREE.MeshStandardMaterial({ color: COL.canopy, roughness: 0.95 }), trunk: new THREE.MeshStandardMaterial({ color: COL.trunk, roughness: 0.9 }),
+};
+const groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(400000, 400000).rotateX(-Math.PI / 2), MAT.ground);
+groundMesh.receiveShadow = true; groundMesh.renderOrder = 0; scene.add(groundMesh);
+
+/* ---------- tiles ---------- */
+let TPL = null;
+async function tileTemplate() {
+  if (TPL) return TPL;
+  try { const j = await (await fetch('https://tiles.openfreemap.org/planet')).json(); TPL = j.tiles[0]; } catch (e) { TPL = 'https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf'; }
+  return TPL;
+}
+async function getTile(z, x, y) {
+  const url = (await tileTemplate()).replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  const r = await fetch(url); if (!r.ok) throw new Error('tile ' + r.status);
+  return new VectorTile(new Pbf(await r.arrayBuffer()));
+}
+
+// tile-space point -> local metres
+function projector(z, tx, ty, ext) {
+  const n = 2 ** z;
+  return (p) => {
+    const wx = (tx + p.x / ext) / n, wy = (ty + p.y / ext) / n;
+    const X = (wx - 0.5) * C, Y = (0.5 - wy) * C;
+    return [(X - X0) * K, -(Y - Y0) * K];
+  };
+}
+const ringArea = (r) => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j].x - r[i].x) * (r[j].y + r[i].y); return a; };
+function polygons(feature) {
+  const rings = feature.loadGeometry(); const polys = []; let cur = null, sign = 0;
+  for (const r of rings) {
+    if (r.length < 4) continue;
+    const a = ringArea(r); if (a === 0) continue;
+    const s = Math.sign(a);
+    if (!cur || s === sign) { if (!sign) sign = s; cur = { outer: r, holes: [] }; polys.push(cur); } else cur.holes.push(r);
+  }
+  return polys;
+}
+
+class Bucket {
+  constructor() { this.pos = []; this.idx = []; this.col = null; }
+  flatPoly(proj, poly, y) {
+    const v2 = (r) => r.slice(0, -1).map((p) => { const q = proj(p); return new THREE.Vector2(q[0], q[1]); });
+    const outer = v2(poly.outer); const holes = poly.holes.map(v2);
+    if (outer.length < 3) return;
+    const tris = THREE.ShapeUtils.triangulateShape(outer, holes);
+    const all = outer.concat(...holes); const base = this.pos.length / 3;
+    for (const p of all) this.pos.push(p.x, y, p.y);
+    for (const t of tris) this.idx.push(base + t[0], base + t[2], base + t[1]);
+  }
+  ribbon(pts, w, y) {
+    if (pts.length < 2) return;
+    const h = w / 2; const base = this.pos.length / 3; const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+      let dx = b[0] - a[0], dz = b[1] - a[1]; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+      let s = h;
+      if (i > 0 && i < n - 1) { // miter, clamped
+        const d1x = p[0] - a[0], d1z = p[1] - a[1], l1 = Math.hypot(d1x, d1z) || 1;
+        const cos = (d1x / l1) * dx + (d1z / l1) * dz; s = h / Math.max(0.5, Math.sqrt((1 + cos) / 2));
+      }
+      this.pos.push(p[0] - dz * s, y, p[1] + dx * s, p[0] + dz * s, y, p[1] - dx * s);
+      if (i) { const k = base + (i - 1) * 2; this.idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+    }
+    // round-ish caps: small discs at both ends
+    for (const e of [pts[0], pts[n - 1]]) this.disc(e, h, y);
+  }
+  disc(p, r, y, seg = 8) {
+    const base = this.pos.length / 3; this.pos.push(p[0], y, p[1]);
+    for (let i = 0; i <= seg; i++) { const t = i / seg * Math.PI * 2; this.pos.push(p[0] + Math.cos(t) * r, y, p[1] + Math.sin(t) * r); }
+    for (let i = 1; i <= seg; i++) this.idx.push(base, base + i + 1, base + i);
+  }
+  geometry() {
+    if (!this.idx.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+    if (this.col) g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    g.setIndex(this.idx);
+    if (this.col) g.computeVertexNormals(); else { const n = new Float32Array(this.pos.length); for (let i = 1; i < n.length; i += 3) n[i] = 1; g.setAttribute('normal', new THREE.BufferAttribute(n, 3)); }
+    return g;
+  }
+}
+
+// buildings: walls + roof, flat-shaded by duplicating vertices per face
+function addBuilding(B, proj, poly, H, color) {
+  const c = new THREE.Color(color);
+  const ring = poly.outer.slice(0, -1).map(proj);
+  if (ring.length < 3) return;
+  if (!B.col) B.col = [];
+  const roofOuter = ring.map((q) => new THREE.Vector2(q[0], q[1]));
+  const holes = poly.holes.map((r) => r.slice(0, -1).map(proj).map((q) => new THREE.Vector2(q[0], q[1])));
+  const tris = THREE.ShapeUtils.triangulateShape(roofOuter, holes);
+  const all = roofOuter.concat(...holes); let base = B.pos.length / 3;
+  for (const p of all) { B.pos.push(p.x, H, p.y); B.col.push(c.r, c.g, c.b); }
+  for (const t of tris) B.idx.push(base + t[0], base + t[2], base + t[1]);
+  const shade = c.clone().multiplyScalar(0.97);
+  for (const r of [ring, ...poly.holes.map((h) => h.slice(0, -1).map(proj))]) {
+    for (let i = 0; i < r.length; i++) {
+      const a = r[i], b = r[(i + 1) % r.length]; base = B.pos.length / 3;
+      B.pos.push(a[0], 0, a[1], b[0], 0, b[1], b[0], H, b[1], a[0], H, a[1]);
+      for (let k = 0; k < 4; k++) B.col.push(shade.r, shade.g, shade.b);
+      B.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
+}
+
+const ROADW = { motorway: 22, trunk: 18, primary: 15, secondary: 12, tertiary: 10, minor: 7, service: 4.5, track: 3, path: 2.2, rail: 3, transit: 2.5 };
+const MAJOR = new Set(['motorway', 'trunk', 'primary', 'secondary']);
+const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+
+function buildTile(vt, z, tx, ty, detail) {
+  const group = new THREE.Group(); const labels = [];
+  const bk = {}; const get = (k) => (bk[k] ||= new Bucket());
+  const L = vt.layers;
+  const each = (name, fn) => { const l = L[name]; if (!l) return; const proj = projector(z, tx, ty, l.extent); for (let i = 0; i < l.length; i++) fn(l.feature(i), proj, i); };
+  const parkPolys = [];
+  each('landuse', (f, proj) => {
+    const c = f.properties.class; let m = null;
+    if (['school', 'university', 'college', 'hospital', 'kindergarten'].includes(c)) m = 'civic';
+    else if (['pitch', 'stadium', 'playground'].includes(c)) m = 'pitch';
+    else if (c === 'cemetery') m = 'wood';
+    if (!m || f.type !== 3) return; for (const p of polygons(f)) get(m).flatPoly(proj, p, 0.05);
+  });
+  each('landcover', (f, proj) => {
+    const c = f.properties.class; const m = c === 'wood' ? 'wood' : c === 'grass' || c === 'wetland' ? 'park' : c === 'sand' ? 'sand' : null;
+    if (!m || f.type !== 3) return; for (const p of polygons(f)) { get(m).flatPoly(proj, p, 0.08); if (detail && m !== 'sand') parkPolys.push([proj, p]); }
+  });
+  each('park', (f, proj) => { if (f.type !== 3) return; for (const p of polygons(f)) { get('park').flatPoly(proj, p, 0.1); if (detail) parkPolys.push([proj, p]); } });
+  each('water', (f, proj) => { if (f.type !== 3) return; for (const p of polygons(f)) get('water').flatPoly(proj, p, 0.12); });
+  each('transportation', (f, proj) => {
+    if (f.type !== 2) return; const c = f.properties.class; const w = ROADW[c]; if (!w) return;
+    if (!detail && !MAJOR.has(c) && c !== 'rail') return;
+    const major = MAJOR.has(c); const bridge = f.properties.brunnel === 'bridge';
+    for (const line of f.loadGeometry()) {
+      const pts = line.map(proj);
+      if (c === 'rail' || c === 'transit') { get('rail').ribbon(pts, w, 0.2); continue; }
+      if (c === 'path' || c === 'track') { get('casing').ribbon(pts, w, 0.18); continue; }
+      get('casing').ribbon(pts, w + (major ? 3 : 2), bridge ? 0.3 : 0.16);
+      get(major ? 'roadMajor' : 'road').ribbon(pts, w, bridge ? 0.34 : (major ? 0.26 : 0.22));
+    }
+  });
+  if (detail) {
+    each('building', (f, proj, i) => {
+      if (f.type !== 3) return;
+      const H = Math.min(f.properties.render_height || 9, 80) * 1.0;
+      const r = hash(tx + ':' + ty + ':' + i); const color = r < 0.05 ? COL.bldA : r < 0.09 ? COL.bldB : COL.bld;
+      for (const p of polygons(f)) addBuilding(get('bld'), proj, p, Math.max(H, 4), color);
+    });
+    // trees scattered in green areas
+    const trees = []; let budget = 260;
+    const rnd = (() => { let s = (tx * 73856093) ^ (ty * 19349663); return () => { s = (s * 1664525 + 1013904223) | 0; return (s >>> 0) / 4294967296; }; })();
+    for (const [proj, p] of parkPolys) {
+      const ring = p.outer.map(proj); let minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9;
+      for (const q of ring) { minx = Math.min(minx, q[0]); maxx = Math.max(maxx, q[0]); minz = Math.min(minz, q[1]); maxz = Math.max(maxz, q[1]); }
+      const area = (maxx - minx) * (maxz - minz); let n = Math.min(60, Math.floor(area / 900));
+      while (n-- > 0 && budget > 0) {
+        const x = minx + rnd() * (maxx - minx), zz = minz + rnd() * (maxz - minz);
+        let inside = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > zz) !== (b[1] > zz) && x < (b[0] - a[0]) * (zz - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside; }
+        if (inside) { trees.push([x, zz, 0.7 + rnd() * 0.6]); budget--; }
+      }
+    }
+    if (trees.length) {
+      const can = new THREE.InstancedMesh(TREE.canopy, MAT.canopy, trees.length), tr = new THREE.InstancedMesh(TREE.trunk, MAT.trunk, trees.length);
+      const m4 = new THREE.Matrix4();
+      trees.forEach(([x, zz, s], i) => { m4.makeScale(s, s, s).setPosition(x, 0, zz); can.setMatrixAt(i, m4); tr.setMatrixAt(i, m4); });
+      can.castShadow = tr.castShadow = true; group.add(can, tr);
+    }
+  }
+  // labels
+  each('place', (f, proj) => {
+    const c = f.properties.class, name = f.properties['name:en'] || f.properties.name; if (!name) return;
+    if (detail ? !['neighbourhood', 'quarter', 'suburb'].includes(c) : !['suburb', 'town', 'city', 'village'].includes(c)) return;
+    const g = f.loadGeometry()[0][0]; const q = proj(g); labels.push({ name, x: q[0], z: q[1], cls: c === 'city' ? 'big' : 'area', min: detail ? 0 : 0 });
+  });
+  if (detail) {
+    const seen = new Set();
+    each('transportation_name', (f, proj) => {
+      const name = f.properties['name:en'] || f.properties.name; if (!name || seen.has(name)) return;
+      if (!['primary', 'secondary', 'tertiary', 'trunk'].includes(f.properties.class)) return;
+      const line = f.loadGeometry()[0]; if (!line || line.length < 2) return; seen.add(name);
+      const q = proj(line[Math.floor(line.length / 2)]); labels.push({ name, x: q[0], z: q[1], cls: '' });
+    });
+  }
+  for (const [k, b] of Object.entries(bk)) {
+    const g = b.geometry(); if (!g) continue;
+    const mesh = new THREE.Mesh(g, MAT[k]);
+    if (k === 'bld') { mesh.castShadow = true; mesh.receiveShadow = true; }
+    else { mesh.renderOrder = MAT[k].userData.order + (detail ? 10 : 0); mesh.receiveShadow = true; }
+    group.add(mesh);
+  }
+  for (const lb of labels) {
+    const el = document.createElement('div'); el.className = 'lbl ' + lb.cls; el.textContent = lb.name;
+    const o = new CSS2DObject(el); o.position.set(lb.x, lb.cls ? 30 : 12, lb.z); o.userData = { kind: lb.cls ? 'area' : 'road' }; group.add(o);
+  }
+  return group;
+}
+
+const TREE = {
+  canopy: new THREE.IcosahedronGeometry(5.5, 1).translate(0, 9, 0),
+  trunk: new THREE.CylinderGeometry(0.7, 0.9, 5, 6).translate(0, 2.5, 0),
+};
+
+/* ---------- tile manager ---------- */
+const tiles = new Map(); const queue = []; let inflight = 0;
+const loadEl = document.getElementById('load');
+function want(z, x, y, detail) {
+  const key = z + '/' + x + '/' + y; if (tiles.has(key)) return tiles.get(key);
+  const t = { key, z, x, y, detail, state: 'queued', group: null }; tiles.set(key, t); queue.push(t); return t;
+}
+async function pump() {
+  while (inflight < 4 && queue.length) {
+    queue.sort((a, b) => a.prio - b.prio); const t = queue.shift(); if (t.state !== 'queued') continue;
+    inflight++; t.state = 'loading';
+    getTile(t.z, t.x, t.y).then((vt) => { t.vt = vt; t.state = 'build'; buildQ.push(t); }).catch(() => { t.state = 'error'; }).finally(() => { inflight--; pump(); });
+  }
+  loadEl.style.opacity = (queue.length || inflight || buildQ.length) ? 1 : 0;
+}
+const buildQ = [];
+function buildOne() {
+  const t = buildQ.shift(); if (!t) return; if (t.state !== 'build') return;
+  t.group = buildTile(t.vt, t.z, t.x, t.y, t.detail); t.vt = null; t.state = 'ready'; scene.add(t.group); dirtyLabels = true;
+}
+function drop(t) {
+  if (t.group) { t.group.traverse((o) => { if (o.geometry && o.geometry !== TREE.canopy && o.geometry !== TREE.trunk) o.geometry.dispose(); if (o.isCSS2DObject) o.element.remove(); }); scene.remove(t.group); }
+  t.state = 'dropped'; tiles.delete(t.key);
+}
+
+// overview: whole Mumbai at z12 (water, green, major roads, area names)
+const BBOX = [72.76, 18.88, 73.02, 19.32];
+(function overview() {
+  const [x0, y0] = tileXY(BBOX[0], BBOX[3], 12), [x1, y1] = tileXY(BBOX[2], BBOX[1], 12);
+  for (let x = Math.floor(x0); x <= Math.floor(x1); x++) for (let y = Math.floor(y0); y <= Math.floor(y1); y++) { const t = want(12, x, y, false); t.prio = -1; }
+})();
+
+let lastDetailKey = '';
+function updateDetail() {
+  const d = camera.position.distanceTo(controls.target);
+  const [lon, lat] = toLL(controls.target.x, controls.target.z);
+  const keep = new Set();
+  if (d < 3800) {
+    const [fx, fy] = tileXY(lon, lat, 14); const cx = Math.floor(fx), cy = Math.floor(fy);
+    const rad = d < 1500 ? 2 : 3;
+    for (let dx = -rad; dx <= rad; dx++) for (let dy = -rad; dy <= rad; dy++) {
+      if (Math.hypot(dx, dy) > rad + 0.5) continue;
+      const t = want(14, cx + dx, cy + dy, true); t.prio = Math.hypot(cx + dx + 0.5 - fx, cy + dy + 0.5 - fy); keep.add(t.key);
+    }
+  }
+  for (const t of [...tiles.values()]) if (t.detail && !keep.has(t.key)) {
+    const [fx, fy] = tileXY(lon, lat, 14); if (d > 5000 || Math.hypot(t.x + 0.5 - fx, t.y + 0.5 - fy) > 6) { if (t.state === 'queued') t.state = 'dropped', tiles.delete(t.key); else if (t.state === 'ready') drop(t); }
+  }
+  pump();
+}
+
+/* ---------- pins (thumbtack: kind-coloured head, white cap, needle) ---------- */
+const pinGroup = new THREE.Group(); scene.add(pinGroup);
+const PIN = { needle: new THREE.CylinderGeometry(0.5, 0.08, 16, 8).translate(0, 8, 0), head: new THREE.SphereGeometry(6.5, 24, 16).translate(0, 22, 0), cap: new THREE.CylinderGeometry(3.6, 3.6, 1.2, 24).translate(0, 28.2, 0), shadow: new THREE.CircleGeometry(4.5, 20).rotateX(-Math.PI / 2).translate(0, 0.5, 0) };
+const needleMat = new THREE.MeshStandardMaterial({ color: 0x6E6862, roughness: 0.4, metalness: 0.4 });
+const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x17140F, transparent: true, opacity: 0.18, depthWrite: false });
+const headMats = {}; for (const [k, c] of Object.entries(KIND)) headMats[k] = new THREE.MeshStandardMaterial({ color: new THREE.Color(c), roughness: 0.45 });
+const pins = [];
+ITEMS.forEach((it, i) => {
+  const g = new THREE.Group(); const [x, z] = ll(it.lng, it.lat);
+  const head = new THREE.Mesh(PIN.head, headMats[it.k]); head.castShadow = true;
+  g.add(new THREE.Mesh(PIN.needle, needleMat), head, new THREE.Mesh(PIN.cap, capMat), new THREE.Mesh(PIN.shadow, shadowMat));
+  g.position.set(x, 0, z); g.userData = { i }; g.renderOrder = 30; pinGroup.add(g); pins.push(g);
+});
+
+/* ---------- card ---------- */
+const card = document.getElementById('card');
+card.querySelector('.x').onclick = () => { card.classList.remove('on'); sel = -1; };
+let sel = -1;
+function showCard(i) {
+  const it = ITEMS[i]; sel = i;
+  card.querySelector('.k i').style.background = KIND[it.k];
+  card.querySelector('.k span').textContent = KNAME[it.k] + (it.when ? ', ' + it.when : '');
+  card.querySelector('h3').textContent = it.t;
+  card.querySelector('p').textContent = it.b || '';
+  const meta = card.querySelector('.meta'); meta.innerHTML = '';
+  const place = [it.place, it.loc].filter(Boolean).join(', ') + (it.approx ? '. Location approximate' : '');
+  meta.append(document.createTextNode(place));
+  if (it.url) { meta.append(document.createElement('br')); const a = document.createElement('a'); a.href = it.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Source: ' + (it.src || 'link'); meta.append(a); }
+  card.classList.add('on');
+}
+const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2(); let downAt = null;
+canvas.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY, performance.now()]; });
+canvas.addEventListener('pointerup', (e) => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6 || performance.now() - downAt[2] > 400) return;
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+  // screen-space pick: nearest pin head within 28 px
+  let best = -1, bd = 28 * 28; const v = new THREE.Vector3();
+  pins.forEach((p, i) => { v.set(0, 22, 0).multiplyScalar(p.scale.x).add(p.position).project(camera); if (v.z > 1) return; const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight; const dd = (sx - e.clientX) ** 2 + (sy - e.clientY) ** 2; if (dd < bd) { bd = dd; best = i; } });
+  if (best >= 0) { showCard(best); flyTo(pins[best].position.x, pins[best].position.z, Math.min(camera.position.distanceTo(controls.target), 900)); }
+  else card.classList.remove('on');
+});
+
+/* ---------- camera moves ---------- */
+let fly = null;
+function flyTo(x, z, dist, polar = 52, az = null, ms = 1100) {
+  const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+  fly = { t0: performance.now(), ms, from: { tx: controls.target.x, tz: controls.target.z, r: sph.radius, ph: sph.phi, th: sph.theta }, to: { tx: x, tz: z, r: dist, ph: THREE.MathUtils.degToRad(polar), th: az == null ? sph.theta : az } };
+}
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function stepFly(now) {
+  if (!fly) return; const t = Math.min(1, (now - fly.t0) / fly.ms), e = ease(t), f = fly.from, g = fly.to;
+  const lerp = (a, b) => a + (b - a) * e; const r = Math.exp(lerp(Math.log(f.r), Math.log(g.r)));
+  controls.target.set(lerp(f.tx, g.tx), 0, lerp(f.tz, g.tz));
+  const s = new THREE.Spherical(r, lerp(f.ph, g.ph), lerp(f.th, g.th)); camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(s));
+  if (t >= 1) fly = null;
+}
+const PLACES = { bandra: [72.8296, 19.0559, 1700, 'Bandra West'], south: [72.8277, 18.9300, 2600, 'South Bombay'], all: [72.875, 19.08, 42000, 'Mumbai'] };
+document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('[data-go]').forEach((x) => x.classList.toggle('on', x === b));
+  const [lon, lat, d, name] = PLACES[b.dataset.go]; const [x, z] = ll(lon, lat); flyTo(x, z, d, b.dataset.go === 'all' ? 20 : 52, b.dataset.go === 'all' ? 0 : null); document.getElementById('mt').textContent = name;
+});
+let flat2d = false;
+document.getElementById('tilt').onclick = () => { flat2d = !flat2d; document.getElementById('tiltl').textContent = flat2d ? '3D' : '2D'; flyTo(controls.target.x, controls.target.z, camera.position.distanceTo(controls.target), flat2d ? 0.1 : 52, null, 700); };
+document.getElementById('north').onclick = () => flyTo(controls.target.x, controls.target.z, camera.position.distanceTo(controls.target), THREE.MathUtils.radToDeg(new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target)).phi), 0, 700);
+
+/* ---------- labels: declutter by screen distance ---------- */
+let dirtyLabels = true, lastLabelT = 0;
+function declutter() {
+  const d = camera.position.distanceTo(controls.target); const placed = []; const v = new THREE.Vector3();
+  const objs = []; scene.traverse((o) => { if (o.isCSS2DObject) objs.push(o); });
+  objs.sort((a, b) => (a.userData.kind === 'area' ? 0 : 1) - (b.userData.kind === 'area' ? 0 : 1));
+  for (const o of objs) {
+    let ok = o.userData.kind === 'area' ? true : d < 1800;
+    if (ok) { v.copy(o.position).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) ok = false; else { const sx = v.x * innerWidth / 2, sy = v.y * innerHeight / 2; for (const p of placed) if (Math.abs(p[0] - sx) < 110 && Math.abs(p[1] - sy) < 28) { ok = false; break; } if (ok) placed.push([sx, sy]); } }
+    o.visible = ok;
+  }
+}
+
+/* ---------- loop ---------- */
+const [bx, bz] = ll(...PLACES.bandra.slice(0, 2));
+controls.target.set(bx, 0, bz);
+camera.position.set(bx + 600, 1250, bz + 1100);
+controls.update();
+let lastUpd = 0;
+function frame(now) {
+  stepFly(now); controls.update();
+  const d = camera.position.distanceTo(controls.target);
+  scene.fog.near = d * 1.6; scene.fog.far = d * 5 + 2000;
+  camera.near = Math.max(2, d / 200); camera.far = d * 20 + 5000; camera.updateProjectionMatrix();
+  // sun follows the view so shadows stay crisp where you look
+  const T = controls.target; sun.position.set(T.x - 700, 1400, T.z + 500); sun.target.position.copy(T); sun.target.updateMatrixWorld();
+  sun.castShadow = d < 3500;
+  // pins keep a readable size at any zoom
+  const s = THREE.MathUtils.clamp(d / 1100, 0.6, 60);
+  for (const p of pins) p.scale.setScalar(s);
+  if (now - lastUpd > 250) { lastUpd = now; updateDetail(); }
+  buildOne(); if (buildQ.length > 6) buildOne();
+  renderer.render(scene, camera);
+  if (dirtyLabels || now - lastLabelT > 200) { declutter(); dirtyLabels = false; lastLabelT = now; }
+  labelR.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); labelR.setSize(innerWidth, innerHeight); });
+pump(); requestAnimationFrame(frame);
+setTimeout(() => { document.getElementById('hint').style.opacity = 0; }, 3500);
+window.__ptp = { tiles, ITEMS, flyTo, ll, controls, camera };
+</script>
+</body>
+</html>
