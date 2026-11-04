@@ -98,12 +98,12 @@ const tileXY = (lon, lat, zm) => { const n = 2 ** zm; const x = (lon + 180) / 36
 /* ---------- palette (onboarding: sand ground, warm white, olive, peach) ---------- */
 const COL = { bld: 0xFFFDF9 };
 // Mumbai facades: mostly white, with the pastels you see on Bandra's lanes; towers stay white or pale glass
-const FACADES = [0xF0AE86, 0xF4CF5E, 0x93C6DE, 0xA2D196, 0xEC9DAE, 0xC4AAE4, 0xEE9F6C, 0x86C6B4, 0xF4D69C, 0xE8846A];
-const TOWERS = [0xFFFFFF, 0xC9DAE6, 0xF3E6D6, 0xB9D3DD, 0xF6D9C6];
+const FACADES = [0xFBEADD, 0xFBEADD, 0xFBEADD, 0xFBEADD, 0xF6D3B9, 0xF6D3B9, 0xF6D3B9, 0xF1BB97, 0xF1BB97, 0xEA9F74, 0xDF8352, 0xCC6834]; // light peach most of the time, deeper orange now and then
+const TOWERS = [0xFDF4EC, 0xF8E2D2, 0xF2CDB3, 0xFBEADD];
 const PAL = {
-  day:   { sky: 0xF1EADF, ground: 0xE9DAC2, water: 0x86C1DE, park: 0xA6C86C, wood: 0x86AE5A, pitch: 0xB3D27C, civic: 0xF5D3B8, sand: 0xF0DDB5, road: 0xFFFFFF, roadMajor: 0xFFFFFF, casing: 0xCFB998, rail: 0xC9B79E, bld: 0xFFFFFF, canopy: 0x7FA346, trunk: 0xA9866A, tank: 0x3C4048, hs: 0xFFF6EA, hg: 0xC9B79A },
-  dusk:  { sky: 0xF2C4A2, ground: 0xDFC6A6, water: 0x93AFC4, park: 0xA2AA76, wood: 0x8E9862, pitch: 0xB0B680, civic: 0xE6C6AD, sand: 0xE2C7A2, road: 0xF8EADD, roadMajor: 0xFBE7D2, casing: 0xBCA083, rail: 0xAC937A, bld: 0xF6E7DC, canopy: 0x7B8648, trunk: 0x8E6F55, tank: 0x2A2626, hs: 0xFFD3AE, hg: 0x947761 },
-  night: { sky: 0x1A1E2C, ground: 0x2B2D36, water: 0x1A2436, park: 0x2B352E, wood: 0x252E29, pitch: 0x303A34, civic: 0x36323B, sand: 0x3A3739, road: 0x4A4A52, roadMajor: 0x7A6648, casing: 0x22242D, rail: 0x3A3B44, bld: 0x8A8C98, canopy: 0x2B392C, trunk: 0x2C2723, tank: 0x1A1A1E, hs: 0x8A93B0, hg: 0x1B1C22 },
+  day:   { sky: 0xF4ECE2, ground: 0xE3CCAA, water: 0x9EC2D0, park: 0x9DB86A, wood: 0x7E9F55, pitch: 0xA9C474, civic: 0xDCC09E, sand: 0xE8D2AA, road: 0xFFF8F0, roadMajor: 0xFFFBF6, casing: 0xB99B78, rail: 0xA88B6C, bld: 0xFFFFFF, canopy: 0x6F9441, trunk: 0x8A6A4E, tank: 0x3E3631, hs: 0xFFF4E6, hg: 0xB89C7C },
+  dusk:  { sky: 0xF1C7A4, ground: 0xD4B590, water: 0x8EAEC0, park: 0x8EA562, wood: 0x738F4F, pitch: 0x9BB16C, civic: 0xCDAE8C, sand: 0xDABF98, road: 0xF8E9DA, roadMajor: 0xFAE6D2, casing: 0xA88A69, rail: 0x987C60, bld: 0xFFF6EE, canopy: 0x64843C, trunk: 0x7A5D44, tank: 0x37302B, hs: 0xFFD8B5, hg: 0x9A7C5E },
+  night: { sky: 0x1D1A1F, ground: 0x2E2924, water: 0x1B2430, park: 0x29332A, wood: 0x232C24, pitch: 0x2D372D, civic: 0x342D27, sand: 0x3A332B, road: 0x4B4440, roadMajor: 0x7A6346, casing: 0x221E1B, rail: 0x3A3430, bld: 0x8E8680, canopy: 0x27331F, trunk: 0x2B241F, tank: 0x1C1A19, hs: 0x9A93A6, hg: 0x1D1A17 },
 };
 const KIND = { problem: '#E4491C', event: '#6B48B8', deal: '#B5306E', notice: '#B7790B' };
 const KNAME = { problem: 'Problem', event: 'Event', deal: 'Deal', notice: 'Notice' };
@@ -318,7 +318,7 @@ function buildTile(vt, z, tx, ty, detail) {
       for (const p of polygons(f)) {
         // one feature can hold a whole block of buildings, so colour each building on its own
         const r = hash(tx + ':' + ty + ':' + i + ':' + (j++) + ':' + p.outer[0].x + ',' + p.outer[0].y);
-        const color = H > 40 ? TOWERS[Math.floor(r * TOWERS.length)] : r < 0.62 ? FACADES[Math.floor(r / 0.62 * FACADES.length)] : COL.bld;
+        const color = H > 40 ? TOWERS[Math.floor(r * TOWERS.length)] : FACADES[Math.floor(r * FACADES.length)];
         addBuilding(get('bld'), proj, p, Math.max(H, 4), color);
         if (H >= 12 && hash('t' + tx + ty + i) < 0.45) {
           const ring = p.outer.slice(0, -1).map(proj); let cx = 0, cz = 0; for (const q of ring) { cx += q[0]; cz += q[1]; } cx /= ring.length; cz /= ring.length;
@@ -603,9 +603,9 @@ function applyTime() {
   dayF = day;
   scene.background.copy(pal('sky', day, dusk)); scene.fog.color.copy(scene.background);
   for (const k of ['ground', 'civic', 'sand', 'park', 'wood', 'pitch', 'water', 'casing', 'rail', 'road', 'roadMajor']) MAT[k].color.copy(pal(k, day, dusk));
-  MAT.bld.color.copy(pal('bld', day, dusk)); MAT.canopy.color.copy(pal('canopy', day, dusk)); MAT.trunk.color.copy(pal('trunk', day, dusk)); MAT.tank.color.copy(pal('tank', day, dusk));
-  hemi.color.copy(pal('hs', day, dusk)); hemi.groundColor.copy(pal('hg', day, dusk)); hemi.intensity = 0.75 + 0.5 * day;
-  sun.intensity = 0.3 + 1.9 * day * (1 - 0.6 * dusk); sun.color.set(dusk > 0.35 ? 0xFFCDA8 : day > 0.5 ? 0xFFF1DE : 0xB8C6F0);
+  MAT.bld.color.copy(pal('bld', Math.max(day, dusk * 0.85), Math.min(1, dusk * 1.3))); MAT.canopy.color.copy(pal('canopy', day, dusk)); MAT.trunk.color.copy(pal('trunk', day, dusk)); MAT.tank.color.copy(pal('tank', day, dusk));
+  hemi.color.copy(pal('hs', day, dusk)); hemi.groundColor.copy(pal('hg', day, dusk)); hemi.intensity = 0.75 + 0.5 * day + 0.6 * dusk;
+  sun.intensity = 0.3 + 1.9 * day * (1 - 0.6 * dusk); sun.color.set(dusk > 0.35 ? 0xFFE2CC : day > 0.5 ? 0xFFF1DE : 0xB8C6F0);
   shadowCatcher.material.opacity = 0.05 + 0.17 * day;
   uNight.value = 1 - day;
   document.body.classList.toggle('night', day < 0.4);
