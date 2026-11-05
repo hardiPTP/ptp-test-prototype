@@ -51,6 +51,11 @@ body.night .lbl.area,body.night .lbl.big{color:#FFF6EA}
 .tag.sel div{background:color-mix(in srgb,var(--kc) 10%,#fff)}
 .plbl{width:0;height:0;pointer-events:none}.plbl span{position:absolute;left:17px;top:-7px;font:500 11px/1.15 var(--text);white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff,0 0 1px #fff;max-width:140px;overflow:hidden;text-overflow:ellipsis}
 body.night .plbl span{text-shadow:0 0 3px #1B2233,0 0 3px #1B2233,0 0 2px #1B2233;filter:brightness(1.6)}
+.th-green{--ink:#10201A;--ink60:rgba(16,32,26,.6);--ink45:rgba(16,32,26,.45);--canvas:#FFFFFF;--well:#EFEAFB}
+.th-green body{background:#F6F4FA}
+.th-green .pill.on,.th-green .time button.on{background:#0B5D3B;color:#fff}
+.th-green .time input{accent-color:#0B5D3B}
+.th-green .mast b{color:#0B5D3B}
 #hint{position:fixed;left:50%;top:46%;transform:translate(-50%,-50%);background:rgba(23,20,15,.78);color:#fff;font:400 13px/18px var(--text);padding:10px 14px;border-radius:16px;text-align:center;transition:opacity .5s;pointer-events:none}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
@@ -105,6 +110,16 @@ const PAL = {
   dusk:  { sky: 0xF3D5BD, ground: 0xF6E8DC, water: 0x88AFC4, park: 0x93AD63, wood: 0x779A50, pitch: 0xA2B872, civic: 0xF1DCCB, sand: 0xEEDDC2, road: 0xEDE0D4, roadMajor: 0xF4D6BF, casing: 0xD3C1AF, rail: 0xBFAE9D, bld: 0xFFF6EE, canopy: 0x64843C, trunk: 0x7A5D44, tank: 0x37302B, hs: 0xFFE2C8, hg: 0xA8917A },
   night: { sky: 0x1D1A1F, ground: 0x2E2924, water: 0x1B2430, park: 0x29332A, wood: 0x232C24, pitch: 0x2D372D, civic: 0x342D27, sand: 0x3A332B, road: 0x4B4440, roadMajor: 0x7A6346, casing: 0x221E1B, rail: 0x3A3430, bld: 0x8E8680, canopy: 0x27331F, trunk: 0x2B241F, tank: 0x1C1A19, hs: 0x9A93A6, hg: 0x1D1A17 },
 };
+// Bottle green, lavender and white experiment: ?theme=green
+const GREEN = new URLSearchParams(location.search).get('theme') === 'green';
+if (GREEN) {
+  document.documentElement.classList.add('th-green');
+  FACADES.splice(0, FACADES.length, 0xFFFFFF, 0xFFFFFF, 0xF6F3FC, 0xF6F3FC, 0xECE5FA, 0xECE5FA, 0xE0D5F6, 0xD3C4F2, 0xC4B1EC, 0xB49EE5, 0xFFFFFF, 0xEFEAFB);
+  TOWERS.splice(0, TOWERS.length, 0xFFFFFF, 0xF3EFFB, 0xE6DEF8, 0xFFFFFF);
+  Object.assign(PAL.day, { sky: 0xF6F4FA, ground: 0xFFFFFF, water: 0xB9D7EE, park: 0x2F7F52, wood: 0x1F6B42, pitch: 0x3E8E5E, civic: 0xF3EFFB, sand: 0xF4F1F8, road: 0xF3F0F8, roadMajor: 0xEDE6FA, casing: 0xDCD5EA, rail: 0xC9C0DD, bld: 0xFFFFFF, canopy: 0x17603A, trunk: 0x5B4A3E, tank: 0x2E3A35, hs: 0xFBFAFF, hg: 0xC9C3D8 });
+  Object.assign(PAL.dusk, { sky: 0xE9D9F2, ground: 0xF6F1F8, water: 0xA7C3DD, park: 0x2A7049, wood: 0x1C5F3B, pitch: 0x377E54, civic: 0xEDE6F6, sand: 0xEFEAF4, road: 0xEDE7F3, roadMajor: 0xE6DCF6, casing: 0xCFC6E0, rail: 0xBDB2D3, bld: 0xFFF8FB, canopy: 0x155635, hs: 0xF3E4FF, hg: 0xA99FBD });
+  Object.assign(PAL.night, { sky: 0x15131F, ground: 0x23212E, water: 0x18223A, park: 0x16352A, wood: 0x112B21, pitch: 0x1A3A2E, civic: 0x2B2738, sand: 0x2F2B3A, road: 0x3B3848, roadMajor: 0x5F5486, casing: 0x1B1926, rail: 0x34304A, bld: 0x8C86A8, canopy: 0x143424, hs: 0x9C93C8, hg: 0x17151F });
+}
 const KIND = { problem: '#E4491C', event: '#6B48B8', deal: '#B5306E', notice: '#B7790B' };
 const KNAME = { problem: 'Problem', event: 'Event', deal: 'Deal', notice: 'Notice' };
 
